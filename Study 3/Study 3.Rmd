@@ -1,0 +1,811 @@
+---
+title: "Study 3"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library("Rmisc")
+library("plyr")
+library("lattice")
+library("ggplot2")
+library("ggpubr")
+#install.packages("plotrix")
+library("plotrix")
+#library("rgl")
+library("rtdists")
+library("tidyverse")
+library("tidyr")
+library("afex")
+library("emmeans")
+library("viridis")
+library("cowplot")
+library("stringr")
+library("caret")
+library("cowplot")
+library("knitr")
+library("lattice")
+library("gsubfn") 
+library("stringi")    
+library("nlme")
+library("Matrix")
+library("writexl")
+library("xlsx")
+library("PairedData")
+library(ggplot2) 
+library(yarrr)     
+library(tidyverse) 
+library(plotrix)      
+library(knitr)        
+library(kableExtra) 
+library(here)        
+here::here()
+library(psycho)
+library("dplyr")
+library("data.table")
+library("MOTE")
+library("pwr")
+```
+
+## Data formatting
+```{r cars}
+#original data
+data_3<-read.csv("E3 original data downloaded from qualtrics.csv",header = TRUE)
+
+#remove those who did not finish the experiment 
+data_3<-subset(data_3,Progress==100)
+#27 participants were excluded because they did not complete the experiment 100%, 90 participants remaining 
+
+#remove survey preview
+data_3<-subset(data_3,Status =='IP Address')
+#2 previews were removed, 88 participants remaining 
+
+#remove those who refused to take the experiment and chose the alternative task
+data_3<-subset(data_3,Q3.4 =='I consent; proceed to the study.')
+#1 participant was refused, 87 remaining 
+
+#remove those that was me testing 
+data_3<-subset(data_3,Warwick_Experimenter=='FALSE')
+#2 were removed, 85 remaining
+
+#remove data that we do not need 
+#columns:
+data_3<-data_3[,-c(1,2,3,4,5,7,8,10,11,12,13,14,15,16,17,18,27,36,69,78,122,124,125,126,127)]
+
+
+#change characters into numeric
+sapply(data_3, class)
+cols.num <- c(5:85)
+data_3[cols.num] <- sapply(data_3[cols.num],as.numeric)
+sapply(data_3, class)
+
+#means to replace nas 
+data_3[24,c(7,8,9,10,11,12,13,14,15)]
+data_3[24,6]<-mean(12,22,50,25,85,90,0,50,60)
+data_3[24,6]
+
+
+data_3[74,c(7,8,9,10,11,12,13,14,15)]
+data_3[74,6]<-mean(59,67,75,52,68,47,33,56,63)
+data_3[74,6]
+
+data_3[79,c(7,8,9,10,11,12,13,14,15)]
+data_3[79,6]<-mean(9,25,71,0,65,37,57,14,10)
+data_3[79,6]
+
+#add a column of condition
+data_3$condition<-"all_true"
+
+#distinguishing two conditions
+for (i in 1:nrow(data_3)){
+   if (is.na(data_3[i,46])==TRUE){
+     data_3[i,103]<-"fake_include"
+   }
+}
+
+#make subsets of two conditions 
+data_3_fi<-subset(data_3,condition=="fake_include")
+data_3_at<-subset(data_3,condition=="all_true")
+
+#remove empty columns from each condition
+data_3_at<-data_3_at[,-c(6:45)]
+data_3_fi<-data_3_fi[,-c(46:85)]
+
+#computation of accuracy for both data sets
+sum(data_3_at[1,6:45]>50)
+
+#all true condition: Targeted, NontargetedTrue1, TargetedTrue, NontargetedTrue2 
+#accuracy for all the headlines
+data_3_at$accu_all50ascorrect<-0
+data_3_at$accu_all50aswrong<-0
+data_3_at$accu_all50ashalf<-0
+data_3_at$all_numberof50<-0
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,64]<-(sum(data_3_at[i,6:15]>=50)+sum(data_3_at[i,16:25]>=50)+sum(data_3_at[i,26:35]>=50)+sum(data_3_at[i,36:45]>=50))/40
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,65]<-(sum(data_3_at[i,6:15]>50)+sum(data_3_at[i,16:25]>50)+sum(data_3_at[i,26:35]>50)+sum(data_3_at[i,36:45]>50))/40
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,66]<-(sum(data_3_at[i,6:15]>50)+sum(data_3_at[i,6:15]==50)/2+sum(data_3_at[i,16:25]>50)+sum(data_3_at[i,16:25]==50)/2+sum(data_3_at[i,26:35]>50)+sum(data_3_at[i,26:35]==50)/2+sum(data_3_at[i,36:45]>50)+sum(data_3_at[i,36:45]==50)/2)/40
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,67]<-(sum(data_3_at[i,6:15]==50)+sum(data_3_at[i,16:25]==50)+sum(data_3_at[i,26:35]==50)+sum(data_3_at[i,36:45]==50))
+}
+
+#accuracy for TargetedTrue
+data_3_at$accu_Targeted_50ascorrect<-0
+data_3_at$accu_Targeted_50aswrong<-0
+data_3_at$accu_Targeted_50ashalf<-0
+data_3_at$Targeted_numberof50<-0
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,68]<-sum(data_3_at[i,6:15]>=50)/10
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,69]<-sum(data_3_at[i,6:15]>50)/10
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,70]<-(sum(data_3_at[i,6:15]>50)+sum(data_3_at[i,6:15]==50)/2)/10
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,71]<-sum(data_3_at[i,6:15]==50)
+}
+
+#accuracy for NonTargetedTrue1
+data_3_at$accu_NontargetedTrue1_50ascorrect<-0
+data_3_at$accu_NontargetedTrue1_50aswrong<-0
+data_3_at$accu_NontargetedTrue1_50ashalf<-0
+data_3_at$NontargetedTrue1_numberof50<-0
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,72]<-sum(data_3_at[i,16:25]>=50)/10
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,73]<-sum(data_3_at[i,16:25]>50)/10
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,74]<-(sum(data_3_at[i,16:25]>50)+sum(data_3_at[i,16:25]==50)/2)/10
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,75]<-sum(data_3_at[i,16:25]==50)
+}
+
+#accuracy for TargetedTrue
+data_3_at$accu_TargetedTrue_50ascorrect<-0
+data_3_at$accu_TargetedTrue_50aswrong<-0
+data_3_at$accu_TargetedTrue_50ashalf<-0
+data_3_at$TargetedTrue_numberof50<-0
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,76]<-sum(data_3_at[i,26:35]>=50)/10
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,77]<-sum(data_3_at[i,26:35]>50)/10
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,78]<-(sum(data_3_at[i,26:35]>50)+sum(data_3_at[i,26:35]==50)/2)/10
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,79]<-sum(data_3_at[i,26:35]==50)
+}
+
+#accuracy for NontargetedTrue2
+data_3_at$accu_NontargetedTrue2_50ascorrect<-0
+data_3_at$accu_NontargetedTrue2_50aswrong<-0
+data_3_at$accu_NontargetedTrue2_50ashalf<-0
+data_3_at$NontargetedTrue2_numberof50<-0
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,80]<-sum(data_3_at[i,36:45]>=50)/10
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,81]<-sum(data_3_at[i,36:45]>50)/10
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,82]<-(sum(data_3_at[i,36:45]>50)+sum(data_3_at[i,36:45]==50)/2)/10
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,83]<-sum(data_3_at[i,36:45]==50)
+}
+
+#fake included condition: NontargetedTrue1, TargetedTrue, NontargetedTrue2, TargetedTrue
+#accuracy for all the headlines
+data_3_fi$accu_all50ascorrect<-0
+data_3_fi$accu_all50aswrong<-0
+data_3_fi$accu_all50ashalf<-0
+data_3_fi$all_numberof50<-0
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,64]<-(sum(data_3_fi[i,6:15]<=50)+sum(data_3_fi[i,16:25]>=50)+sum(data_3_fi[i,26:35]>=50)+sum(data_3_fi[i,36:45]>=50))/40
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,65]<-(sum(data_3_fi[i,6:15]<50)+sum(data_3_fi[i,16:25]>50)+sum(data_3_fi[i,26:35]>50)+sum(data_3_fi[i,36:45]>50))/40
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,66]<-(sum(data_3_fi[i,6:15]<50)+sum(data_3_fi[i,6:15]==50)/2+sum(data_3_fi[i,16:25]>50)+sum(data_3_fi[i,16:25]==50)/2+sum(data_3_fi[i,26:35]>50)+sum(data_3_fi[i,26:35]==50)/2+sum(data_3_fi[i,36:45]>50)+sum(data_3_fi[i,36:45]==50)/2)/40
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,67]<-(sum(data_3_fi[i,6:15]==50)+sum(data_3_fi[i,16:25]==50)+sum(data_3_fi[i,26:35]==50)+sum(data_3_fi[i,36:45]==50))
+}
+
+#accuracy for TargetedFake
+data_3_fi$accu_Targeted_50ascorrect<-0
+data_3_fi$accu_Targeted_50aswrong<-0
+data_3_fi$accu_Targeted_50ashalf<-0
+data_3_fi$Targeted_numberof50<-0
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,68]<-sum(data_3_fi[i,6:15]<=50)/10
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,69]<-sum(data_3_fi[i,6:15]<50)/10
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,70]<-(sum(data_3_fi[i,6:15]<50)+sum(data_3_fi[i,6:15]==50)/2)/10
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,71]<-sum(data_3_fi[i,6:15]==50)
+}
+
+#accuracy for NontargetedTrue1
+data_3_fi$accu_NontargetedTrue1_50ascorrect<-0
+data_3_fi$accu_NontargetedTrue1_50aswrong<-0
+data_3_fi$accu_NontargetedTrue1_50ashalf<-0
+data_3_fi$NontargetedTrue1_numberof50<-0
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,72]<-sum(data_3_fi[i,16:25]>=50)/10
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,73]<-sum(data_3_fi[i,16:25]>50)/10
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,74]<-(sum(data_3_fi[i,16:25]>50)+sum(data_3_fi[i,16:25]==50)/2)/10
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,75]<-sum(data_3_fi[i,16:25]==50)
+}
+
+#accuracy for TargetedTrue
+data_3_fi$accu_TargetedTrue_50ascorrect<-0
+data_3_fi$accu_TargetedTrue_50aswrong<-0
+data_3_fi$accu_TargetedTrue_50ashalf<-0
+data_3_fi$TargetedTrue_numberof50<-0
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,76]<-sum(data_3_fi[i,26:35]>=50)/10
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,77]<-sum(data_3_fi[i,26:35]>50)/10
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,78]<-(sum(data_3_fi[i,26:35]>50)+sum(data_3_fi[i,26:35]==50)/2)/10
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,79]<-sum(data_3_fi[i,26:35]==50)
+}
+
+#accuracy for NontargetedTrue2
+data_3_fi$accu_NontargetedTrue2_50ascorrect<-0
+data_3_fi$accu_NontargetedTrue2_50aswrong<-0
+data_3_fi$accu_NontargetedTrue2_50ashalf<-0
+data_3_fi$NontargetedTrue2_numberof50<-0
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,80]<-sum(data_3_fi[i,36:45]>=50)/10
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,81]<-sum(data_3_fi[i,36:45]>50)/10
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,82]<-(sum(data_3_fi[i,36:45]>50)+sum(data_3_fi[i,36:45]==50))/10
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,83]<-sum(data_3_fi[i,36:45]==50)
+}
+
+#manipulation check 
+data_3_at$all_sliderlessthan50<-0
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,84]<-sum(data_3_at[i,6:45]<50)
+}
+
+data_3_fi$all_sliderlessthan50<-0
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,84]<-sum(data_3_fi[i,6:45]<50)
+}
+
+
+#computation of truth relativism and new data set for it 
+for(i in 1:nrow(data_3_at)) {
+  for (j in 6:45){
+    data_3_at[i,j]<-(1-abs(data_3_at[i,j]-50)/50)
+  }
+}
+
+for(i in 1:nrow(data_3_fi)) {
+  for (j in 6:45){
+    data_3_fi[i,j]<-(1-abs(data_3_fi[i,j]-50)/50)
+  }
+}
+
+#add a column of tr
+#the mean value of truth relativism for all the news added as a new column for both data sets
+rowMeans(data_3_at[,6:45])
+data_3_at$tr_all<-rowMeans(data_3_at[,6:45])
+
+rowMeans(data_3_fi[,6:45])
+data_3_fi$tr_all<-rowMeans(data_3_fi[,6:45])
+
+#the mean value of truth relativism for four subsets of news
+#all true condition: NontargetedTrue1, TargetedFake, NontargetedTrue2, TargetedTrue
+rowMeans(data_3_at[,6:15])
+data_3_at$tr_Targeted<-rowMeans(data_3_at[,6:15])
+
+rowMeans(data_3_at[,16:25])
+data_3_at$tr_NontargetedTrue1<-rowMeans(data_3_at[,16:25])
+
+rowMeans(data_3_at[,26:35])
+data_3_at$tr_TargetedTrue<-rowMeans(data_3_at[,26:35])
+
+rowMeans(data_3_at[,36:45])
+data_3_at$tr_NontargetedTrue2<-rowMeans(data_3_at[,36:45])
+
+#fake included condition: NontargetedTrue1, TargetedTrue, NontargetedTrue2, TargetedTrue
+rowMeans(data_3_fi[,6:15])
+data_3_fi$tr_Targeted<-rowMeans(data_3_fi[,6:15])
+
+rowMeans(data_3_fi[,16:25])
+data_3_fi$tr_NontargetedTrue1<-rowMeans(data_3_fi[,16:25])
+
+rowMeans(data_3_fi[,26:35])
+data_3_fi$tr_TargetedTrue<-rowMeans(data_3_fi[,26:35])
+
+rowMeans(data_3_fi[,36:45])
+data_3_fi$tr_NontargetedTrue2<-rowMeans(data_3_fi[,36:45])
+
+#columns of self-report-TR for at
+data_3_at$SelfReport_tr<-0
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,90]<-(sum(data_3_at[i,c(49,50,51,53,56,57,58,59)]=="Strongly disagree")+2*sum(data_3_at[i,c(49,50,51,53,56,57,58,59)]=="Somewhat disagree")+3*sum(data_3_at[i,c(49,50,51,53,56,57,58,59)]=="Neither agree nor disagree")+4*sum(data_3_at[i,c(49,50,51,53,56,57,58,59)]=="Somewhat agree")+5*sum(data_3_at[i,c(49,50,51,53,56,57,58,59)]=="Strongly agree")+sum(data_3_at[i,c(52,54,55)]=="Strongly agree")+2*sum(data_3_at[i,c(52,54,55)]=="Somewhat agree")+3*sum(data_3_at[i,c(52,54,55)]=="Neither agree nor disagree")+4*sum(data_3_at[i,c(52,54,55)]=="Somewhat disagree")+5*sum(data_3_at[i,c(52,54,55)]=="Strongly disagree"))
+}
+
+#columns of self-report-TR for fi
+data_3_fi$SelfReport_tr<-0
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,90]<-(sum(data_3_fi[i,c(49,50,51,53,56,57,58,59)]=="Strongly disagree")+2*sum(data_3_fi[i,c(49,50,51,53,56,57,58,59)]=="Somewhat disagree")+3*sum(data_3_fi[i,c(49,50,51,53,56,57,58,59)]=="Neither agree nor disagree")+4*sum(data_3_fi[i,c(49,50,51,53,56,57,58,59)]=="Somewhat agree")+5*sum(data_3_fi[i,c(49,50,51,53,56,57,58,59)]=="Strongly agree")+sum(data_3_fi[i,c(52,54,55)]=="Strongly agree")+2*sum(data_3_fi[i,c(52,54,55)]=="Somewhat agree")+3*sum(data_3_fi[i,c(52,54,55)]=="Neither agree nor disagree")+4*sum(data_3_fi[i,c(52,54,55)]=="Somewhat disagree")+5*sum(data_3_fi[i,c(52,54,55)]=="Strongly disagree"))
+}
+
+#columns of confidence for at 
+data_3_at$Confidence_life<-0
+data_3_at$Confidence_exp<-0
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,91]<-sum(data_3_at[i,47]=="None at all")+2*sum(data_3_at[i,47]=="A little")+3*sum(data_3_at[i,47]=="A moderate amount")+4*sum(data_3_at[i,47]=="A lot")+5*sum(data_3_at[i,47]=="A great deal")
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,92]<-sum(data_3_at[i,48]=="None at all")+2*sum(data_3_at[i,48]=="A little")+3*sum(data_3_at[i,48]=="A moderate amount")+4*sum(data_3_at[i,48]=="A lot")+5*sum(data_3_at[i,48]=="A great deal")
+}
+
+#columns of confidence for fi
+data_3_fi$Confidence_life<-0
+data_3_fi$Confidence_exp<-0
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,91]<-sum(data_3_at[i,47]=="None at all")+2*sum(data_3_at[i,47]=="A little")+3*sum(data_3_at[i,47]=="A moderate amount")+4*sum(data_3_at[i,47]=="A lot")+5*sum(data_3_at[i,47]=="A great deal")
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,92]<-sum(data_3_at[i,48]=="None at all")+2*sum(data_3_at[i,48]=="A little")+3*sum(data_3_at[i,48]=="A moderate amount")+4*sum(data_3_at[i,48]=="A lot")+5*sum(data_3_at[i,48]=="A great deal")
+}
+
+#column of exhaustion for at 
+data_3_at$exhaustion<-0
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,93]<-sum(data_3_at[i,46]=="None at all")+2*sum(data_3_at[i,46]=="A little")+3*sum(data_3_at[i,46]=="A moderate amount")+4*sum(data_3_at[i,46]=="A lot")+5*sum(data_3_at[i,46]=="A great deal")
+}
+
+#column of exhaustion for fi 
+data_3_fi$exhaustion<-0
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,93]<-sum(data_3_at[i,46]=="None at all")+2*sum(data_3_at[i,46]=="A little")+3*sum(data_3_at[i,46]=="A moderate amount")+4*sum(data_3_at[i,46]=="A lot")+5*sum(data_3_at[i,46]=="A great deal")
+}
+
+#columns of news-consumption habits
+data_3_at$media_attitude<-0
+data_3_at$check_frequency<-0
+data_3_at$sources<-0
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,94]<-sum(data_3_at[i,3]=="Almost never")+2*sum(data_3_at[i,3]=="Only some of the time")+3*sum(data_3_at[i,3]=="Most of the time")+4*sum(data_3_at[i,3]=="Just about always")
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,95]<-sum(data_3_at[i,4]=="Never")+2*sum(data_3_at[i,4]=="Once a week")+3*sum(data_3_at[i,4]=="3-4 times a week")+4*sum(data_3_at[i,4]=="Once a day")+5*sum(data_3_at[i,4]=="Multiple times a day")
+}
+
+for (i in 1:nrow(data_3_at)){
+  data_3_at[i,96]<-sum(data_3_at[i,5]=="0")+2*sum(data_3_at[i,5]=="1")+3*sum(data_3_at[i,5]=="2")+4*sum(data_3_at[i,5]=="3")+5*sum(data_3_at[i,5]=="4")
+}
+
+#columns of news-consumption habits
+data_3_fi$media_attitude<-0
+data_3_fi$check_frequency<-0
+data_3_fi$sources<-0
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,94]<-sum(data_3_fi[i,3]=="Almost never")+2*sum(data_3_fi[i,3]=="Only some of the time")+3*sum(data_3_fi[i,3]=="Most of the time")+4*sum(data_3_fi[i,3]=="Just about always")
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,95]<-sum(data_3_fi[i,4]=="Never")+2*sum(data_3_fi[i,4]=="Once a week")+3*sum(data_3_fi[i,4]=="3-4 times a week")+4*sum(data_3_fi[i,4]=="Once a day")+5*sum(data_3_fi[i,4]=="Multiple times a day")
+}
+
+for (i in 1:nrow(data_3_fi)){
+  data_3_fi[i,96]<-sum(data_3_fi[i,5]=="0")+2*sum(data_3_fi[i,5]=="1")+3*sum(data_3_fi[i,5]=="2")+4*sum(data_3_fi[i,5]=="3")+5*sum(data_3_fi[i,5]=="4")
+}
+
+```
+
+## Research question 1: investigate if and how differential exposure to misinformation affects individuals’ truth relativism towards true news
+```{r pressure, echo=FALSE}
+#compute the truth relativism of each headline and sequence them 
+colMeans(data_3_at[,6:45])
+dt3_headline<-data.frame(colMeans(data_3_at[,6:45]))
+
+dt3_headline02<-data.frame(colMeans(data_3_fi[,6:45]))
+
+#change the names of columns 
+data_3_at<-data_3_at %>% 
+  dplyr::rename("01" = "Q8.1_1", "02"="Q8.2_1",  "03"="Q8.3_1",                       
+"04"="Q8.4_1",                            "05"="Q8.5_1",                          
+"06"="Q8.7_1",                            "07"="Q8.8_1",                          
+"08"="Q8.9_1",                           "09"="Q8.10_1",                         
+"10"="Q8.11_1",                          "11"="Q8.12_1",                         
+"12"="Q8.13_1",                         "13"="Q8.14_1",                        
+"14"="Q8.16_1",                        "15"="Q8.17_1",                        
+"16"="Q8.18_1",                       "17" ="Q8.19_1",                       
+"18" ="Q8.20_1" ,                      "19" ="Q8.21_1",                      
+"20" ="Q8.22_1",                     "21" ="Q9.1_1" ,                     
+"22" ="Q9.2_1" ,                   "23" = "Q9.3_1",                    
+"24"="Q9.4_1"  ,                   "25"="Q9.5_1"   ,                   
+"26" = "Q9.6_1"     ,                 "27"=   "Q9.7_1"   ,                  
+"28"="Q9.8_1"   ,                 "29" ="Q9.9_1"      ,                 
+"30"="Q9.10_1"          ,               "31" = "Q9.11_1"     ,                
+"32" ="Q9.12_1"         ,               "33"  = "Q9.13_1"   ,               
+"34"  ="Q9.14_1"  ,              "35" ="Q9.15_1" ,              
+"36"="Q9.16_1" ,             "37"= "Q9.17_1"          ,             
+"38" ="Q9.18_1"       ,            "39"  ="Q9.19_1"       ,            
+"40"="Q9.20_1")
+
+data_3_fi<-data_3_fi %>% 
+  dplyr::rename("01" = "Q6.1_2", "02"="Q6.2_1",  "03"="Q6.3_1",                       
+"04"="Q6.4_1",                            "05"="Q6.5_1",                          
+"06"="Q6.7_1",                            "07"="Q6.8_1",                          
+"08"="Q6.9_1",                           "09"="Q6.10_1",                         
+"10"="Q6.11_1",                          "11"="Q6.12_1",                         
+"12"="Q6.13_1",                         "13"="Q6.14_1",                        
+"14"="Q6.16_1",                        "15"="Q6.17_1",                        
+"16"="Q6.18_1",                       "17" ="Q6.19_1",                       
+"18" ="Q6.20_1" ,                      "19" ="Q6.21_1",                      
+"20" ="Q6.22_1",                     "21" ="Q7.1_1" ,                     
+"22" ="Q7.2_1" ,                   "23" = "Q7.3_1",                    
+"24"="Q7.4_1"  ,                   "25"="Q7.5_1"   ,                   
+"26" = "Q7.6_1"     ,                 "27"=   "Q7.7_1"   ,                  
+"28"="Q7.8_1"   ,                 "29" ="Q7.9_1"      ,                 
+"30"="Q7.10_1"          ,               "31" = "Q7.11_1"     ,                
+"32" ="Q7.12_1"         ,               "33"  = "Q7.13_1"   ,               
+"34"  ="Q7.14_1"  ,              "35" ="Q7.15_1" ,              
+"36"="Q7.16_1" ,             "37"= "Q7.17_1"          ,             
+"38" ="Q7.18_1"       ,            "39"  ="Q7.19_1"       ,            
+"40"="Q7.20_1")
+data_3_bind<-rbind(data_3_at,data_3_fi)
+
+#Comparisons of truth relativism
+#within all_true condition 
+#Does targeting true news or targeted true news have higher truth relativism?
+t.test(data_3_at$tr_Targeted,data_3_at$tr_TargetedTrue,paired=TRUE) 
+mean(data_3_at$tr_Targeted)
+mean(data_3_at$tr_TargetedTrue)
+#visualisation regarding truth relativism
+data_3_at_visualtr<-data_3_at[,c(2,63,86,87,88,89)] %>%
+  pivot_longer(!c(ResponseId,condition), names_to = "subsets", values_to = "relativism_subsets")
+
+#visualisation regarding accuracy(we chose 50 as correct for now because no difference was found between how we delat with 50 differently)
+data_3_at_visualaccu<-data_3_at[,c(2,63,68,72,76,80)] %>%
+  pivot_longer(!c(ResponseId,condition), names_to = "subsets", values_to = "accuracy_subsets")
+
+data_3_at_visualaccu$subsets = substr(data_3_at_visualaccu$subsets,1,nchar(data_3_at_visualaccu$subsets)-11)
+
+theme_apa <- function(base_size = 12, base_family = "", box = FALSE) {
+  adapted_theme <- ggplot2::theme_bw(base_size, base_family) +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = ggplot2::rel(1.1), margin = ggplot2::margin(0, 0, ggplot2::rel(14), 0), hjust = 0.5)
+      , plot.subtitle = ggplot2::element_text(size = ggplot2::rel(0.8), margin = ggplot2::margin(ggplot2::rel(-7), 0, ggplot2::rel(14), 0), hjust = 0.5)
+
+      # , axis.title = ggplot2::element_text(size = ggplot2::rel(1.1))
+      , axis.title.x = ggplot2::element_text(size = ggplot2::rel(1), lineheight = ggplot2::rel(1.1), margin = ggplot2::margin(ggplot2::rel(12), 0, 0, 0))
+      , axis.title.x.top = ggplot2::element_text(size = ggplot2::rel(1), lineheight = ggplot2::rel(1.1), margin = ggplot2::margin(0, 0, ggplot2::rel(12), 0))
+      , axis.title.y = ggplot2::element_text(size = ggplot2::rel(1), lineheight = ggplot2::rel(1.1), margin = ggplot2::margin(0, ggplot2::rel(12), 0, 0))
+      , axis.title.y.right = ggplot2::element_text(size = ggplot2::rel(1), lineheight = ggplot2::rel(1.1), margin = ggplot2::margin(0, 0, 0, ggplot2::rel(12)))
+      , axis.ticks.length = ggplot2::unit(ggplot2::rel(6), "points")
+      , axis.text = ggplot2::element_text(size = ggplot2::rel(0.9))
+      , axis.text.x = ggplot2::element_text(size = ggplot2::rel(1), margin = ggplot2::margin(ggplot2::rel(6), 0, 0, 0))
+      , axis.text.y = ggplot2::element_text(size = ggplot2::rel(1), margin = ggplot2::margin(0, ggplot2::rel(6), 0, 0))
+      , axis.text.y.right = ggplot2::element_text(size = ggplot2::rel(1), margin = ggplot2::margin(0, 0, 0, ggplot2::rel(6)))
+      , axis.line = ggplot2::element_line()
+      # , axis.line.x = ggplot2::element_line()
+      # , axis.line.y = ggplot2::element_line()
+
+      , legend.title = ggplot2::element_text()
+      , legend.key = ggplot2::element_rect(fill = NA, color = NA)
+      , legend.key.width = ggplot2::unit(ggplot2::rel(20), "points")
+      , legend.key.height = ggplot2::unit(ggplot2::rel(20), "points")
+      , legend.margin = ggplot2::margin(
+        t = ggplot2::rel(16)
+        , r = ggplot2::rel(16)
+        , b = ggplot2::rel(16)
+        , l = ggplot2::rel(16)
+        , unit = "points"
+      )
+
+      , panel.spacing = ggplot2::unit(ggplot2::rel(14), "points")
+      , panel.grid.major.x = ggplot2::element_blank()
+      , panel.grid.minor.x = ggplot2::element_blank()
+      , panel.grid.major.y = ggplot2::element_blank()
+      , panel.grid.minor.y = ggplot2::element_blank()
+
+      , strip.background = ggplot2::element_rect(fill = NA, color = NA)
+      , strip.text.x = ggplot2::element_text(size = ggplot2::rel(1.2), margin = ggplot2::margin(0, 0, ggplot2::rel(10), 0))
+      , strip.text.y = ggplot2::element_text(size = ggplot2::rel(1.2), margin = ggplot2::margin(0, 0, 0, ggplot2::rel(10)))
+    )
+
+  if(box) {
+    adapted_theme <- adapted_theme + ggplot2::theme(panel.border = ggplot2::element_rect(color = "black"))
+  } else {
+    adapted_theme <- adapted_theme + ggplot2::theme(panel.border = ggplot2::element_blank())
+  }
+
+  adapted_theme
+}
+
+p_s3 <- ggplot(data_3_bind, aes(x=condition, y=tr_TargetedTrue)) + 
+  labs(y="Truth Relativism of Targeted True News Headlines", x = "Treatment Group") +
+  geom_boxplot(alpha=0.3,width = .15,outlier.shape = NA,fill="dark grey")+
+  theme_classic()+
+  geom_point(position = position_jitter(width = .15), size = 0.5,colour="black")+
+  scale_x_discrete(labels = c('All True','Fake Included'))
+p_s3
+p_s3<-p_s3+theme_apa()
+p_s3
+
+#visualisation regarding truth relativism
+data_3_fi_visualtr<-data_3_fi[,c(2,63,86,87,88,89)] %>%
+  pivot_longer(!c(ResponseId,condition), names_to = "subsets", values_to = "relativism_subsets")
+
+#visualisation regarding accuracy(we chose 50 as correct for now because no difference was found between how we delat with 50 differently)
+data_3_fi_visualaccu<-data_3_fi[,c(2,63,68,72,76,80)] %>%
+  pivot_longer(!c(ResponseId,condition), names_to = "subsets", values_to = "accuracy_subsets")
+
+data_3_fi_visualaccu$subsets = substr(data_3_fi_visualaccu$subsets,1,nchar(data_3_fi_visualaccu$subsets)-11)
+
+#between conditions 
+#Does targeted true news in all_true condition have a lower truth_relativism compared with targeted true news in fake_included condition 
+t.test(data_3_at$tr_TargetedTrue,data_3_fi$tr_TargetedTrue,paired=FALSE) 
+aov_ez("ResponseId","tr_TargetedTrue",data_3_bind,between = "condition")
+
+# Bayesian meta-analysis
+#computing effect size 
+aov_ez("ResponseId","tr_TargetedTrue",data_3_bind,between = "condition")
+
+anova_model = lm(formula = tr_TargetedTrue ~ condition, data = data_3_bind)
+summary.aov(anova_model)
+
+library(MOTE)
+
+eta.full.SS(dfm = 1, dfe = 83, ssm = 0.0039,
+            sst = (0.0039+1.8089), Fvalue = 0.181, a = .05)
+
+# Computing eta - outputs used in JASP
+eta.full.SS(dfm = 1, dfe = 82, ssm = 148.173, sst = 1321000, Fvalue = 0.009, a = 0.05)
+
+#Does Non-targeted true news in all_true condition have a different truth_relativism compared with nontargeted true news in fake_included condition 
+t.test(data_3_at$tr_NontargetedTrue2,data_3_fi$tr_NontargetedTrue2,paired=FALSE)
+mean(data_3_at$tr_NontargetedTrue2)
+mean(data_3_fi$tr_NontargetedTrue2)
+
+t.test(data_3_at$tr_NontargetedTrue1,data_3_fi$tr_NontargetedTrue1,paired=FALSE) 
+mean(data_3_at$tr_NontargetedTrue2)
+mean(data_3_fi$tr_NontargetedTrue2)
+aov_ez("ResponseId","tr_NontargetedTrue2",data_3_bind,between = "condition")
+aov_ez("ResponseId","tr_NontargetedTrue1",data_3_bind,between = "condition")
+
+#Does targeting true news in all true condition have a different truth_relativism compared with targeting fake news in fake_included condition 
+t.test(data_3_at$tr_Targeted,data_3_fi$tr_Targeted,paired=FALSE) 
+aov_ez("ResponseId","tr_Targeted",data_3_bind,between = "condition")
+
+aov_ez("ResponseId","tr_Targeted",data_3_bind,between = "condition")
+
+#Does Non-targeted true news in all_true condition have a different accuracy compared with nontargeted true news in fake_included condition
+t.test(data_3_at$accu_Targeted_50ascorrect,data_3_fi$accu_Targeted_50ascorrect,paired=FALSE) 
+
+t.test(data_3_at$accu_Targeted_50aswrong,data_3_fi$accu_Targeted_50aswrong,paired=FALSE) 
+
+t.test(data_3_at$accu_Targeted_50ashalf,data_3_fi$Targeted_50ashalf,paired=FALSE) 
+aov_ez("ResponseId","accu_Targeted_50ascorrect",data_3_bind,between = "condition")
+
+aov_ez("ResponseId","accu_Targeted_50ashalf",data_3_bind,between = "condition")
+
+#Does accuracy of all decrease with the number of slider <50?
+summary(lm(accu_all50ashalf~all_sliderlessthan50,data_3_bind)) 
+
+#other accuracies
+summary(lm(accu_TargetedTrue_50ashalf~all_sliderlessthan50,data_3_bind)) 
+
+summary(lm(accu_Targeted_50ashalf~all_sliderlessthan50,data_3_bind)) 
+summary(lm(accu_Targeted_50ashalf~all_sliderlessthan50,data_3_at)) 
+summary(lm(accu_Targeted_50ashalf~all_sliderlessthan50,data_3_fi)) 
+
+
+summary(lm(accu_NontargetedTrue1_50ashalf~all_sliderlessthan50,data_3_bind)) 
+
+
+
+summary(lm(accu_TargetedTrue_50ashalf~all_sliderlessthan50,data_3_bind)) 
+summary(lm(accu_TargetedTrue_50ashalf~all_sliderlessthan50,data_3_bind)) 
+summary(lm(accu_NontargetedTrue2_50ashalf~all_sliderlessthan50,data_3_bind)) 
+```
+
+## Research question 2: examine whether differential exposure to misinformation affects individuals’ accuracy of judgements 
+```{r}
+# Does targeted true news in all_true condition have a higher accuracy compared with targeted true news in fake_included condition 
+t.test(data_3_at$accu_TargetedTrue_50ascorrect,data_3_fi$accu_TargetedTrue_50ascorrect,paired=FALSE) 
+mean(data_3_at$accu_TargetedTrue_50ascorrect)
+mean(data_3_fi$accu_TargetedTrue_50ascorrect)
+anova_accutargetedtrue<-aov_ez("ResponseId","accu_TargetedTrue_50ascorrect",data_3_bind,between = "condition")
+anova_accutargetedtrue
+
+t.test(data_3_at$accu_TargetedTrue_50aswrong,data_3_fi$accu_TargetedTrue_50aswrong,paired=FALSE) 
+mean(data_3_at$accu_TargetedTrue_50aswrong)
+mean(data_3_fi$accu_TargetedTrue_50aswrong)
+
+t.test(data_3_at$accu_TargetedTrue_50ashalf,data_3_fi$accu_TargetedTrue_50ashalf,paired=FALSE) 
+mean(data_3_at$accu_TargetedTrue_50ashalf)
+mean(data_3_fi$accu_TargetedTrue_50ashalf)
+aov_ez("ResponseId","accu_TargetedTrue_50ascorrect",data_3_bind,between = "condition")
+aov_ez("ResponseId","accu_TargetedTrue_50ashalf",data_3_bind,between = "condition")
+
+anova_model_accu = lm(formula = accu_TargetedTrue_50ascorrect ~ condition, data = data_3_bind)
+summary.aov(anova_model_accu)
+
+eta.full.SS(dfm = 1, dfe = 83, ssm = 0.0005,
+            sst = (0.0039+1.4825), Fvalue = 0.03, a = .05)
+```
+
+#Analysis of how many pieces of news participants put the slider less than 50 
+```{r}
+#Is there a difference between how many pieces of news participants put the slider less than 50 of two conditions?
+t.test(data_3_at$all_sliderlessthan50,data_3_fi$all_sliderlessthan50,paired=FALSE) 
+
+anova_manipulation<-aov_ez("ResponseId","all_sliderlessthan50",data_3_bind,between = "condition")
+anova_manipulation
+
+emmeans(anova_manipulation,"condition")
+```
+
+
+##Research question 3: examine the correlation between truth relativism and individual’s self-reported relativism
+```{r}
+#TR and Self Report TR
+summary(lm(tr_all~SelfReport_tr,data_3_bind))
+cor.test(data_3_bind$tr_all,data_3_bind$SelfReport_tr)
+
+anova_model_e3sr = lm(formula = SelfReport_tr ~ tr_all, data = data_3_bind)
+summary.aov(anova_model_e3sr)
+
+eta.full.SS(dfm = 1, dfe = 83, ssm = 0.4,
+            sst = (0.4+1847.6), Fvalue = 0.016, a = .05)
+
+
+summary(lm(tr_TargetedTrue~SelfReport_tr,data_3_bind))
+
+summary(lm(tr_NontargetedTrue2~SelfReport_tr,data_3_bind))
+
+summary(lm(tr_Targeted~SelfReport_tr,data_3_bind))
+
+summary(lm(tr_NontargetedTrue1~SelfReport_tr,data_3_bind))
+```
+
+##Truth relativism and other factors
+```{r}
+#Confidence and TR
+summary(lm(tr_all~Confidence_life,data_3_bind))
+summary(lm(tr_all~Confidence_exp,data_3_bind))
+
+
+#Exhaustion and TR
+summary(lm(tr_all~exhaustion,data_3_bind))
+cor.test(data_3_bind$tr_all,data_3_bind$exhaustion)
+
+
+#Media consumption habits and TR
+summary(lm(tr_all~media_attitude,data_3_bind))
+summary(lm(tr_all~check_frequency,data_3_bind))
+summary(lm(tr_all~check_frequency+media_attitude,data_3_bind))
+
+summary(lm(tr_all~check_frequency+media_attitude+sources,data_3_bind))
+
+summary(lm(tr_all~Q5.3,data_3_bind))
+summary(lm(tr_all~sources,data_3_bind))
+
+summary(lm(check_frequency~sources+media_attitude,data_3_bind))
+summary(lm(check_frequency~sources,data_3_bind))
+summary(lm(check_frequency~media_attitude,data_3_bind))
+
+
+#tr_all and fake news experience(number of <50 rating)
+summary(lm(tr_all~all_sliderlessthan50+all_numberof50,data_3_bind))
+
+
+colnames(data_3_bind)
+summary(lm(tr_all~accu_all50ashalf,data_3_bind)) 
+summary(lm(tr_all~accu_all50aswrong,data_3_bind)) 
+summary(lm(tr_all~accu_all50ascorrect,data_3_bind)) 
+
+summary(lm(tr_TargetedTrue~accu_all50ashalf,data_3_bind)) 
+
+aov_ez("ResponseId","tr_all",data_3_bind,between = "Q13.1")
+
+ex<-aov_ez("ResponseId","exhaustion",data_3_bind,between = "condition")
+ex
+
+t.test(subset(data_3_bind, condition=="all_true")$"exhaustion", # because we have one measurement per person
+       subset(data_3_bind, condition=="fake_include")$"exhaustion"
+       )
+
+afex_plot(ex,"condition",error = "between",mapping = "color")
+
+tr_s3_ex<-emmeans(ex,"condition")
+tr_s3_ex
+
+
+```
+

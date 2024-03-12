@@ -1,0 +1,381 @@
+---
+title: "Study 4"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library("Rmisc")
+library("plyr")
+library("lattice")
+library("ggplot2")
+library("ggpubr")
+library("plotrix")
+#library("rgl")
+library("rtdists")
+library("tidyverse")
+library("tidyr")
+library("afex")
+library("emmeans")
+library("viridis")
+library("cowplot")
+library("stringr")
+library("caret")
+library("cowplot")
+library("knitr")
+library("lattice")
+library("gsubfn") 
+library("stringi")    
+library("nlme")
+library("Matrix")
+library("writexl")
+library("xlsx")
+library("PairedData")
+library(ggplot2) 
+library(yarrr)       
+library(tidyverse)   
+library(plotrix)    
+library(knitr)      
+library(kableExtra) 
+library(here)         
+here::here()
+library(psycho)
+library("dplyr")
+library("data.table")
+library("MOTE")
+library("pwr")
+library("latticeExtra")
+
+#theme_apa
+theme_apa <- function(base_size = 12, base_family = "", box = FALSE) {
+  adapted_theme <- ggplot2::theme_bw(base_size, base_family) +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = ggplot2::rel(1.1), margin = ggplot2::margin(0, 0, ggplot2::rel(14), 0), hjust = 0.5)
+      , plot.subtitle = ggplot2::element_text(size = ggplot2::rel(0.8), margin = ggplot2::margin(ggplot2::rel(-7), 0, ggplot2::rel(14), 0), hjust = 0.5)
+
+      # , axis.title = ggplot2::element_text(size = ggplot2::rel(1.1))
+      , axis.title.x = ggplot2::element_text(size = ggplot2::rel(1), lineheight = ggplot2::rel(1.1), margin = ggplot2::margin(ggplot2::rel(12), 0, 0, 0))
+      , axis.title.x.top = ggplot2::element_text(size = ggplot2::rel(1), lineheight = ggplot2::rel(1.1), margin = ggplot2::margin(0, 0, ggplot2::rel(12), 0))
+      , axis.title.y = ggplot2::element_text(size = ggplot2::rel(1), lineheight = ggplot2::rel(1.1), margin = ggplot2::margin(0, ggplot2::rel(12), 0, 0))
+      , axis.title.y.right = ggplot2::element_text(size = ggplot2::rel(1), lineheight = ggplot2::rel(1.1), margin = ggplot2::margin(0, 0, 0, ggplot2::rel(12)))
+      , axis.ticks.length = ggplot2::unit(ggplot2::rel(6), "points")
+      , axis.text = ggplot2::element_text(size = ggplot2::rel(0.9))
+      , axis.text.x = ggplot2::element_text(size = ggplot2::rel(1), margin = ggplot2::margin(ggplot2::rel(6), 0, 0, 0))
+      , axis.text.y = ggplot2::element_text(size = ggplot2::rel(1), margin = ggplot2::margin(0, ggplot2::rel(6), 0, 0))
+      , axis.text.y.right = ggplot2::element_text(size = ggplot2::rel(1), margin = ggplot2::margin(0, 0, 0, ggplot2::rel(6)))
+      , axis.line = ggplot2::element_line()
+      # , axis.line.x = ggplot2::element_line()
+      # , axis.line.y = ggplot2::element_line()
+
+      , legend.title = ggplot2::element_text()
+      , legend.key = ggplot2::element_rect(fill = NA, color = NA)
+      , legend.key.width = ggplot2::unit(ggplot2::rel(20), "points")
+      , legend.key.height = ggplot2::unit(ggplot2::rel(20), "points")
+      , legend.margin = ggplot2::margin(
+        t = ggplot2::rel(16)
+        , r = ggplot2::rel(16)
+        , b = ggplot2::rel(16)
+        , l = ggplot2::rel(16)
+        , unit = "points"
+      )
+
+      , panel.spacing = ggplot2::unit(ggplot2::rel(14), "points")
+      , panel.grid.major.x = ggplot2::element_blank()
+      , panel.grid.minor.x = ggplot2::element_blank()
+      , panel.grid.major.y = ggplot2::element_blank()
+      , panel.grid.minor.y = ggplot2::element_blank()
+
+      , strip.background = ggplot2::element_rect(fill = NA, color = NA)
+      , strip.text.x = ggplot2::element_text(size = ggplot2::rel(1.2), margin = ggplot2::margin(0, 0, ggplot2::rel(10), 0))
+      , strip.text.y = ggplot2::element_text(size = ggplot2::rel(1.2), margin = ggplot2::margin(0, 0, 0, ggplot2::rel(10)))
+    )
+
+  if(box) {
+    adapted_theme <- adapted_theme + ggplot2::theme(panel.border = ggplot2::element_rect(color = "black"))
+  } else {
+    adapted_theme <- adapted_theme + ggplot2::theme(panel.border = ggplot2::element_blank())
+  }
+
+  adapted_theme
+}
+```
+
+##Data pre-processing
+```{r cars}
+#read data
+data_4<-read.csv("e4.csv",header = TRUE)
+
+#remove Survey Preview
+data_4<-subset(data_4,data_4$Status=="IP Address")
+#remove experimenter testing
+data_4<-subset(data_4,data_4$Warwick_Experimenter=="FALSE")
+#remain participants who finished the experiment 
+data_4<-subset(data_4,data_4$Finished=="TRUE")
+#remove blank columns 
+data_4<-data_4[,-c(10,11,12,13,77,80,81,83)]
+
+E4dt_derandomize<-read.csv("E4dt_derandomize.csv",header = TRUE)
+
+#step1. exclude participants based on their completion time 
+data_4<-subset(data_4,as.numeric(data_4$Duration..in.seconds.)<150000)
+
+#step2. quantify a manipulated score for each participant (make it become a column), so we can see whether that score affects participants evaluations towards statements later - this score's computation:
+#no-controvery condition: no-0, yes-1
+#controvery condition: no-1,  yes-0
+for (i in 1: nrow(data_4)){
+ # for (j in data_4[,15]) {
+    if (data_4[i,15]=="")
+    data_4[i,76]<-"controversy"
+    else
+      data_4[i,76]<-"no_controversy"
+}
+
+data_4$manipulation<-0
+
+for (i in 1: nrow(data_4)){
+  for (j in 15:19) {
+    if (data_4[i,j]=="Yes")
+    data_4[i,77]<-data_4[i,77]+1
+    else
+      data_4[i,77]<-data_4[i,77]
+ }
+}
+
+for (i in 1: nrow(data_4)){
+  for (j in 20:24) {
+    if (data_4[i,j]=="No")
+    data_4[i,77]<-data_4[i,77]+1
+    else
+      data_4[i,77]<-data_4[i,77]
+ }
+}
+```
+
+
+##Manipulation check 
+```{r pressure, echo=FALSE}
+#step3. compare the number of yes/no within each condition, if there is always a significant difference, then the manipulation of each condition is successful 
+data_4$yes_number<-0
+data_4$no_number<-0
+for (i in 1: nrow(data_4)){
+  for (j in 15:19) {
+    if (data_4[i,j]=="Yes")
+    data_4[i,78]<-data_4[i,78]+1
+    else
+      data_4[i,78]<-data_4[i,78]
+ }
+}
+
+for (i in 1: nrow(data_4)){
+  for (j in 15:19) {
+    if (data_4[i,j]=="No")
+    data_4[i,79]<-data_4[i,79]+1
+    else
+      data_4[i,79]<-data_4[i,79]
+ }
+}
+
+for (i in 1: nrow(data_4)){
+  for (j in 20:24) {
+    if (data_4[i,j]=="Yes")
+    data_4[i,78]<-data_4[i,78]+1
+    else
+      data_4[i,78]<-data_4[i,78]
+ }
+}
+
+for (i in 1: nrow(data_4)){
+  for (j in 20:24) {
+    if (data_4[i,j]=="No")
+    data_4[i,79]<-data_4[i,79]+1
+    else
+      data_4[i,79]<-data_4[i,79]
+ }
+}
+
+t.test(subset(data_4, V76=="controversy")$"yes_number", 
+       subset(data_4, V76=="no_controversy")$"yes_number"
+       )
+```
+
+
+##Exhaustion level 
+```{r}
+#step4. quantify exhaustion level for reading the articles and make it become a column for analysis later 
+#None at all-0
+#A little-1
+#A moderate amount-2
+#A lot-3
+#A great deal-4
+data_4$ex_article<-0
+
+for (i in 1: nrow(data_4)){
+    if (data_4[i,25]=="None at all")
+    data_4[i,80]<-data_4[i,80]
+    else if (data_4[i,25]=="A little")
+      data_4[i,80]<-data_4[i,80]+1
+    else if (data_4[i,25]=="A moderate amount")
+      data_4[i,80]<-data_4[i,80]+2
+    else if (data_4[i,25]=="A lot")
+      data_4[i,80]<-data_4[i,80]+3
+    else if (data_4[i,25]=="A great deal")
+      data_4[i,80]<-data_4[i,80]+4
+}
+
+t.test(subset(data_4, V76=="controversy")$"ex_article", 
+       subset(data_4, V76=="no_controversy")$"ex_article"
+       )
+```
+
+## Research question 1: investigate if and how differential exposure to misinformation affects individuals’ truth relativism towards true news
+```{r}
+#step5. compute the truth-relativism of all the statements, meanwhile, create an averaged tr score for "most people think", an averaged tr score for "you think", and an averaged tr score for all
+data_4[,26:53]<-sapply(data_4[,26:53],as.numeric)
+
+for(i in 1:nrow(data_4)) {
+  for (j in 26:53){
+    data_4[i,j]<-1-abs(data_4[i,j]-50)/50
+  }
+}
+
+data_4$tr_most<-rowMeans(data_4[,c(26,28,30,32,34,36,38,40,42,44,46,48,50,52)])
+data_4$tr_you<-rowMeans(data_4[,c(27,29,31,33,35,37,39,41,43,45,47,49,51,53)])
+data_4$tr_all<-rowMeans(data_4[,26:53]) 
+
+with(data_4, t.test(tr_most, tr_you, paired=TRUE)) 
+mean(data_4$tr_you)
+mean(data_4$tr_most)
+
+t.test(subset(data_4, V76=="controversy")$"tr_you", 
+       subset(data_4, V76=="no_controversy")$"tr_you"
+       )
+
+
+
+t.test(subset(data_4, V76=="controversy")$"tr_most", 
+       subset(data_4, V76=="no_controversy")$"tr_most"
+       ) 
+```
+
+##Exhaustion
+```{r}
+#step6. quantify exhaustion level for evaluating the information and make it become a column for analysis later 
+#None at all-0
+#A little-1
+#A moderate amount-2
+#A lot-3
+#A great deal-4
+
+data_4$ex_statements<-0
+for (i in 1: nrow(data_4)){
+    if (data_4[i,54]=="None at all")
+    data_4[i,84]<-data_4[i,84]
+    else if (data_4[i,54]=="A little")
+      data_4[i,84]<-data_4[i,84]+1
+    else if (data_4[i,54]=="A moderate amount")
+      data_4[i,84]<-data_4[i,84]+2
+    else if (data_4[i,54]=="A lot")
+      data_4[i,84]<-data_4[i,84]+3
+    else if (data_4[i,54]=="A great deal")
+      data_4[i,84]<-data_4[i,84]+4
+}
+
+t.test(subset(data_4, V76=="controversy")$"ex_statements", 
+       subset(data_4, V76=="no_controversy")$"ex_statements"
+       )
+```
+
+
+##Research question 2: examine the correlation between truth relativism and individual’s self-reported relativism
+```{r}
+# step8. compute self-truth relativism - note that the way for computing this should be consistent across all four studies to have a strong back up, check previous studies as well 
+for (i in 1: nrow(data_4)){
+  for (j in c(60,61,62,64,67,68,69,70)) {
+    if (data_4[i,j]=="Strongly disagree")
+    data_4[i,j]<-1
+    else if (data_4[i,j]=="Somewhat disagree")
+    data_4[i,j]<-2
+    else if (data_4[i,j]=="Neither agree nor disagree")
+      data_4[i,j]<-3
+    else if (data_4[i,j]=="Somewhat agree")
+      data_4[i,j]<-4
+    else if (data_4[i,j]=="Strongly agree")
+      data_4[i,j]<-5
+  }
+}
+
+for (i in 1: nrow(data_4)){
+  for (j in c(63,65,66)) {
+    if (data_4[i,j]=="Strongly disagree")
+    data_4[i,j]<-5
+    else if (data_4[i,j]=="Somewhat disagree")
+    data_4[i,j]<-4
+    else if (data_4[i,j]=="Neither agree nor disagree")
+      data_4[i,j]<-3
+    else if (data_4[i,j]=="Somewhat agree")
+      data_4[i,j]<-2
+    else if (data_4[i,j]=="Strongly agree")
+      data_4[i,j]<-1
+  }
+}
+
+sapply(data_4,class)
+data_4[,60:70]<-sapply(data_4[,60:70],as.numeric)
+
+data_4<-data_4 %>%
+  group_by(ResponseId) %>%
+    summarize(sr = mean(c(Q39_1,Q39_2,Q39_3,Q39_4,Q39_5,Q39_6,Q39_7,Q39_8,Q39_9,Q39_10,Q39_11))) %>%
+inner_join(data_4, by = 'ResponseId')
+
+#Step9.exhaustion/self-reported tr 
+summary(lm(tr_all~sr,data_4))
+
+summary(lm(tr_most~sr,data_4))
+summary(lm(tr_you~sr,data_4))
+
+anova_modele4sr = lm(formula = sr ~ tr_you, data = data_4)
+summary.aov(anova_modele4sr)
+
+eta.full.SS(dfm = 1, dfe = 85, ssm = 1.228,
+            sst = (1.228+16.233), Fvalue = 6.429, a = .05)
+
+cor.test(data_4$tr_you,data_4$sr) 
+
+p_s4_you <- ggplot(data_4, aes(x=V76, y=tr_you)) + 
+  labs(y="Individual Truth Relativism", x = "Treatment Group") +
+  geom_boxplot(alpha=0.3,width = .15,outlier.shape = NA,fill="dark grey")+
+  theme_classic()+
+  geom_point(position = position_jitter(width = .15), size = 0.5,colour="black")+
+  scale_x_discrete(labels = c('Controversy','Non-controversy'))
+p_s4_you
+p_s4_you<-p_s4_you+theme_apa()
+p_s4_you
+
+obj1<-p_s4_you
+
+
+p_s4_most <- ggplot(data_4, aes(x=V76, y=tr_most)) + 
+  labs(y="Collective Truth Relativism", x = "Treatment Group") +
+  geom_boxplot(alpha=0.3,width = .15,outlier.shape = NA,fill="dark grey")+
+  theme_classic()+
+  geom_point(position = position_jitter(width = .15), size = 0.5,colour="black")+
+  scale_x_discrete(labels = c('Controversy','Non-controversy'))
+p_s4_most
+p_s4_most<-p_s4_most+theme_apa()
+p_s4_most
+
+cowplot::plot_grid(p_s4_you,p_s4_most)
+
+library(MOTE)
+
+anova_modele4 = lm(formula = tr_all ~ V76, data = data_4)
+summary.aov(anova_modele4)
+
+eta.full.SS(dfm = 1, dfe = 85, ssm = 0.0022,
+            sst = (0.0022+0.8251), Fvalue = 0.23, a = .05)
+
+t.test(subset(data_4, V76=="controversy")$"sr", 
+       subset(data_4, V76=="no_controversy")$"sr"
+       )
+
+```
+
