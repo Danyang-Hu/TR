@@ -1,0 +1,833 @@
+---
+title: "Study 2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library("Rmisc")
+library("plyr")
+library("lattice")
+library("ggplot2")
+library("ggpubr")
+library("plotrix")
+library("rtdists")
+library("tidyverse")
+library("tidyr")
+library("afex")
+library("emmeans")
+library("viridis")
+library("cowplot")
+library("stringr")
+library("caret")
+library("cowplot")
+library("knitr")
+library("lattice")
+library("gsubfn") 
+library("stringi")    
+library("nlme")
+library("Matrix")
+library("writexl")
+library("xlsx")
+library("PairedData")
+library(ggplot2) 
+library(yarrr)       
+library(tidyverse)
+library(plotrix)      
+library(knitr)        
+library(kableExtra)
+library(here)         
+here::here()
+library(psycho)
+library("dplyr")
+library("MOTE")
+library("pwr")
+library("ggbeeswarm")
+
+theme_apa <- function(base_size = 12, base_family = "", box = FALSE) {
+  adapted_theme <- ggplot2::theme_bw(base_size, base_family) +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = ggplot2::rel(1.1), margin = ggplot2::margin(0, 0, ggplot2::rel(14), 0), hjust = 0.5)
+      , plot.subtitle = ggplot2::element_text(size = ggplot2::rel(0.8), margin = ggplot2::margin(ggplot2::rel(-7), 0, ggplot2::rel(14), 0), hjust = 0.5)
+
+      # , axis.title = ggplot2::element_text(size = ggplot2::rel(1.1))
+      , axis.title.x = ggplot2::element_text(size = ggplot2::rel(1), lineheight = ggplot2::rel(1.1), margin = ggplot2::margin(ggplot2::rel(12), 0, 0, 0))
+      , axis.title.x.top = ggplot2::element_text(size = ggplot2::rel(1), lineheight = ggplot2::rel(1.1), margin = ggplot2::margin(0, 0, ggplot2::rel(12), 0))
+      , axis.title.y = ggplot2::element_text(size = ggplot2::rel(1), lineheight = ggplot2::rel(1.1), margin = ggplot2::margin(0, ggplot2::rel(12), 0, 0))
+      , axis.title.y.right = ggplot2::element_text(size = ggplot2::rel(1), lineheight = ggplot2::rel(1.1), margin = ggplot2::margin(0, 0, 0, ggplot2::rel(12)))
+      , axis.ticks.length = ggplot2::unit(ggplot2::rel(6), "points")
+      , axis.text = ggplot2::element_text(size = ggplot2::rel(0.9))
+      , axis.text.x = ggplot2::element_text(size = ggplot2::rel(1), margin = ggplot2::margin(ggplot2::rel(6), 0, 0, 0))
+      , axis.text.y = ggplot2::element_text(size = ggplot2::rel(1), margin = ggplot2::margin(0, ggplot2::rel(6), 0, 0))
+      , axis.text.y.right = ggplot2::element_text(size = ggplot2::rel(1), margin = ggplot2::margin(0, 0, 0, ggplot2::rel(6)))
+      , axis.line = ggplot2::element_line()
+      # , axis.line.x = ggplot2::element_line()
+      # , axis.line.y = ggplot2::element_line()
+
+      , legend.title = ggplot2::element_text()
+      , legend.key = ggplot2::element_rect(fill = NA, color = NA)
+      , legend.key.width = ggplot2::unit(ggplot2::rel(20), "points")
+      , legend.key.height = ggplot2::unit(ggplot2::rel(20), "points")
+      , legend.margin = ggplot2::margin(
+        t = ggplot2::rel(16)
+        , r = ggplot2::rel(16)
+        , b = ggplot2::rel(16)
+        , l = ggplot2::rel(16)
+        , unit = "points"
+      )
+
+      , panel.spacing = ggplot2::unit(ggplot2::rel(14), "points")
+      , panel.grid.major.x = ggplot2::element_blank()
+      , panel.grid.minor.x = ggplot2::element_blank()
+      , panel.grid.major.y = ggplot2::element_blank()
+      , panel.grid.minor.y = ggplot2::element_blank()
+
+      , strip.background = ggplot2::element_rect(fill = NA, color = NA)
+      , strip.text.x = ggplot2::element_text(size = ggplot2::rel(1.2), margin = ggplot2::margin(0, 0, ggplot2::rel(10), 0))
+      , strip.text.y = ggplot2::element_text(size = ggplot2::rel(1.2), margin = ggplot2::margin(0, 0, 0, ggplot2::rel(10)))
+    )
+
+  if(box) {
+    adapted_theme <- adapted_theme + ggplot2::theme(panel.border = ggplot2::element_rect(color = "black"))
+  } else {
+    adapted_theme <- adapted_theme + ggplot2::theme(panel.border = ggplot2::element_blank())
+  }
+
+  adapted_theme
+}
+```
+
+## Data pre-processing
+
+```{r cars}
+E2dt<-read.csv("E2dt.csv",header=TRUE)
+responseArray<- read.csv("responseArrayupdated.csv",header = TRUE) 
+E2dt_derandomize<-read.csv("E2dt_derandomize.csv",header=TRUE)
+
+#add response id and condition to responseArray 
+responseArray$Respond.ID<-E2dt_derandomize$ResponseId
+responseArray$condition<-E2dt_derandomize$condition
+
+#remove the column of r-mean
+responseArray<-responseArray[,-81]
+
+#make response array have the same columns like e2dt
+responseArray[,83:87]<-E2dt[,4:8]
+
+responseArray$Duration..in.seconds.<-E2dt$Duration..in.seconds. #column 88
+
+responseArray[,89:107]<-E2dt[,89:107]
+
+#put respond.id ... in the start 
+responseArray<-responseArray[,c(88,81,82,83,84,85,86,87,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107)]
+
+E2dt<-responseArray
+
+E2dt[E2dt$condition=="All True ","condition"] <- "All True"
+E2dt[E2dt$condition=="More Fake ","condition"] <- "More Fake"
+```
+
+## Research question 1: investigate if and how differential exposure to misinformation affects individuals’ truth relativism towards true news
+```{r pressure, echo=FALSE}
+E2dt<-E2dt %>%
+  group_by(Respond.ID) %>%
+    summarize(tr80 = mean(c(X.1,          X.2 ,         X.3,          X.4,         
+X.5 ,    X.6,     X.7 ,        X.8 ,         X.9 ,         X.10 ,    X.11,    
+X.12 ,        X.13,         X.14,         X.15 ,   X.16,        X.17  ,       X.18  ,      
+X.19  ,   X.20,   X.21 ,        X.22 ,        X.23 ,        X.24,X.25,X.26,X.27,X.28,X.29,X.30,X.31,X.32,X.33,X.34,X.35,X.36,X.37,X.38,X.39,X.40,X.41,X.42,X.43,X.44,X.45,X.46,X.47,X.48,X.49,X.50,X.51,X.52,X.53,X.54,X.55,X.56,X.57,X.58,X.59,X.60,X.61,X.62,X.63,X.64,X.65,X.66,X.67,X.68,X.69,X.70,X.71,X.72,X.73,X.74,X.75,X.76,X.77,X.78,X.79,X.80))) %>%
+inner_join(E2dt, by = 'Respond.ID')
+
+E2dt<-E2dt %>%
+  group_by(Respond.ID) %>%
+    summarize(trfirst8 = mean(c(X.1,          X.2 ,         X.3,          X.4,         
+X.5 ,    X.6,     X.7 ,        X.8))) %>%
+inner_join(E2dt, by = 'Respond.ID')
+
+E2dt<-E2dt %>%
+  group_by(Respond.ID) %>%
+    summarize(trlast8 = mean(c(X.73,X.74,X.75,X.76,X.77,X.78,X.79,X.80))) %>%
+inner_join(E2dt, by = 'Respond.ID')
+
+E2dt<-E2dt %>%
+  group_by(Respond.ID) %>%
+    summarize(trMiddle = mean(c(X.9 ,         X.10 ,    X.11,    
+X.12 ,        X.13,         X.14,         X.15 ,   X.16,        X.17  ,       X.18  ,      
+X.19  ,   X.20,   X.21 ,        X.22 ,        X.23 ,        X.24,X.25,X.26,X.27,X.28,X.29,X.30,X.31,X.32,X.33,X.34,X.35,X.36,X.37,X.38,X.39,X.40,X.41,X.42,X.43,X.44,X.45,X.46,X.47,X.48,X.49,X.50,X.51,X.52,X.53,X.54,X.55,X.56,X.57,X.58,X.59,X.60,X.61,X.62,X.63,X.64,X.65,X.66,X.67,X.68,X.69,X.70,X.71,X.72))) %>%
+inner_join(E2dt, by = 'Respond.ID')
+
+## duration test
+hist(E2dt$Duration..in.seconds.,50)
+
+E2dur <- subset(E2dt, E2dt$Duration..in.seconds. < 10000)
+
+hist(E2dur$Duration..in.seconds.,50)
+
+summaryFN <- E2dur%>% 
+                    summarySE(measurevar="Duration..in.seconds.", 
+                    groupvars ="condition", na.rm=T) 
+summaryFN
+
+#ANOVAs
+#between groups 
+m802<-aov_ez("Respond.ID","tr80",E2dur,between = "condition")
+m802
+summary(m802)
+
+afex_plot(m802,"condition",error = "between",mapping = "color")
+
+tr_s2<-emmeans(m802,"condition")
+tr_s2
+
+tr_s2%>%
+  pairs(adjust="holm")
+
+#Anova for first 8
+mf82<-aov_ez("Respond.ID","trfirst8",E2dur,between = "condition")
+mf82
+
+m1<-filter(E2dur,condition=="More Fake")
+m2<-filter(E2dur,condition=="All True")
+
+#Anova for last 8
+ml82<-aov_ez("Respond.ID","trlast8",E2dur,between = "condition")
+ml82
+
+afex_plot(ml82,"condition",error = "between",mapping = "color")
+
+tr_s2_l8<-emmeans(ml82,"condition")
+tr_s2_l8
+
+tr_s2_l8%>%
+  pairs(adjust="holm")
+
+anova_model_e2tr = lm(formula = trlast8 ~ condition, data = E2dur)
+summary.aov(anova_model_e2tr)
+
+eta.full.SS(dfm = 1, dfe = 77, ssm = 0.0994,
+            sst = (0.0994+1.6072), Fvalue = 4.76, a = .05)
+
+#Anova middle 64
+ml642<-aov_ez("Respond.ID","trMiddle",E2dur,between = "condition")
+ml642
+
+afex_plot(ml642,"condition",error = "between",mapping = "color")
+
+tr_s2_m64<-emmeans(ml642,"condition")
+tr_s2_m64
+
+tr_s2_m64%>%
+  pairs(adjust="holm")
+
+
+# Middle 64
+summaryFN <- E2dt%>% 
+                    summarySE(measurevar="trMiddle", 
+                    groupvars ="condition", na.rm=T) 
+summaryFN
+
+##
+ggplot(summaryFN, aes(x = condition, y = trMiddle))+
+  geom_point() +
+  geom_errorbar(aes(ymin=trMiddle-se, ymax=trMiddle+se), width=.2)  +
+  labs(x="Condition", y = "Truth relativism")+
+   theme_classic() 
+
+## 
+summaryFN2 <- E2dur%>% 
+                    summarySE(measurevar="trlast8", 
+                    groupvars ="condition", na.rm=T) 
+summaryFN2
+
+ggplot(summaryFN2, aes(x = condition, y = trlast8))+
+  geom_point() +
+  geom_errorbar(aes(ymin=trlast8-se, ymax=trlast8+se), width=.2)  +
+  labs(x="Condition", y = "Truth relativism")+
+   theme_classic() 
+
+#follow-up tests for ANOVAs
+em802<-emmeans(m802,"condition")
+em802
+
+con1<-list(true_vs_fake=c(1,-1))
+contrast(em802, con1, adjust = "holm")
+
+E2dt%>%
+  group_by(condition)%>%
+  summarise(mean=mean(tr80)) 
+
+E2dt%>%
+  group_by(condition)%>%
+  summarise(mean=mean(trfirst8)) 
+
+E2dt%>%
+  group_by(condition)%>%
+  summarise(mean=mean(trlast8)) 
+
+eml82<-emmeans(ml82,"condition")
+eml82
+
+con2<-list(true_vs_fake=c(1,-1))
+contrast(eml82, con2, adjust = "holm")
+
+em642<-emmeans(ml642,"condition")
+em642
+
+con3<-list(true_vs_fake=c(1,-1))
+contrast(em642, con3, adjust = "holm")
+
+#Comparisons within/between
+#Subset dataset
+#Remove relativism values for each question and only remain tr80/trf8/trl8/id/conditions
+E2dt1<-E2dur[,(1:7)]
+
+#only remain trf8/trl8/id/conditions
+E2dt1<-E2dt1[,-(5:6)]
+
+#change trf8/trl8 into one column 
+E2dt1<-E2dt1 %>%
+  pivot_longer(c(3,4), names_to = "sequence", values_to = "trtrue")
+
+#mixed anova \
+m<-aov_ez("Respond.ID","trtrue",E2dt1,between = "condition",within="sequence")
+m
+
+emdiff2<-emmeans(m,"condition")
+emdiff2
+
+con4<-list(true_vs_fake=c(1,-1))
+contrast(emdiff2, con4, adjust = "holm")
+
+#reset e2dt1 to subset
+E2dt1<-E2dur[,(1:7)]
+E2dt1<-E2dt1[,-(5:6)]
+
+#t.tests
+E2dt1mf<-E2dt1%>%filter(condition=="More Fake")
+t.test(E2dt1mf$trlast8,E2dt1mf$trfirst8,paired = TRUE)
+colnames(E2dt1mf)
+
+E2dt1at<-E2dt1%>%filter(condition=="All True")
+t.test(E2dt1at$trlast8,E2dt1at$trfirst8,paired = TRUE) ##significant 
+
+#difference
+E2dt1<-E2dt1%>%mutate(difference=trlast8-trfirst8)
+mdiff<-aov_ez("Respond.ID","difference",E2dt1,between = "condition")
+mdiff
+
+afex_plot(mdiff,"condition",error = "between",mapping = "color")
+
+tr_s2_diff<-emmeans(mdiff,"condition")
+tr_s2_diff
+
+tr_s2_diff%>%
+  pairs(adjust="holm")
+
+anova_model_e2trdiff = lm(formula = difference ~ condition, data = E2dt1)
+summary.aov(anova_model_e2trdiff)
+
+eta.full.SS(dfm = 1, dfe = 77, ssm = 0.2002,
+            sst = (0.2002+2.0263), Fvalue = 7.609, a = .05)
+
+
+emdiff<-emmeans(mdiff,"condition")
+emdiff
+
+con5<-list(true_vs_fake=c(1,-1))
+contrast(emdiff, con5, adjust = "holm")
+
+with(E2dt1, hist(trfirst8))
+with(E2dt1, hist(trlast8))
+with(E2dt1,hist(difference))
+
+m7<-filter(E2dt1,condition=="More Fake")
+m8<-filter(E2dt1,condition=="All True")
+
+#Figure 2
+p_s2 <- ggplot(E2dt1, aes(x=condition, y=difference)) + 
+  labs(y="Change of Truth Relativism ", x = "Treatment Group") +
+  geom_boxplot(alpha=0.3,width = .15,outlier.shape = NA,fill="dark grey")+
+  theme_classic()+
+  geom_point(position = position_jitter(width = .15), size = 0.5,colour="black")
+p_s2
+p_s2<-p_s2+theme_apa() ##where to add theme_apa
+p_s2
+```
+
+## Research question 2: examine whether differential exposure to misinformation affects individuals’ accuracy of judgements 
+```{r}
+#Analysis of accuracy
+E2dt<-read.csv("E2dt.csv",header=TRUE)
+E2dt_derandomize<- read.csv("E2dt_derandomize.csv",header = TRUE) 
+
+#reread
+responseArray2<- read.csv("responseArray2.csv",header = TRUE)
+
+for(i in 1:nrow(responseArray2)){
+  for(j in 1:length(responseArray2)){
+    if(is.na(responseArray2[i,j])==TRUE){
+      responseArray2[i,j]<-responseArray2$s_mean[i]
+      }
+        }
+}
+
+responseArray2<-responseArray2[,-81]
+responseArray2[,81:85]<-E2dt[,4:8]
+
+responseArray2$Duration..in.seconds.<-E2dt$Duration..in.seconds. #86
+responseArray2$Response.ID<-E2dt$Response.ID #87
+responseArray2$condition<-E2dt$condition #88
+responseArray2[,89:107]<-E2dt[,89:107]
+
+#put respond.id...in the start 
+responseArray2<-responseArray2[,c(86,87,88,81,82,83,84,85,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107)]
+
+E2dt2<-responseArray2
+E2dt2[E2dt2$condition=="All True ","condition"] <- "All True"
+E2dt2[E2dt2$condition=="More Fake ","condition"] <- "More Fake"
+
+E2dt2 <- subset(E2dt2, E2dt2$Duration..in.seconds. < 10000)
+hist(E2dt2$Duration..in.seconds., 50)
+
+for(i in 1:nrow(E2dt2)){
+   for(j in c(9,10,11,12,13,14,15,16,81,82,83,84,85,86,87,88)){
+     if(E2dt2[i,j]<50)
+     {E2dt2[i,j]<-0 }
+     else if (E2dt2[i,j]==50)
+     {E2dt2[i,j]<-0.5}
+     else{
+       E2dt2[i,j]<-1
+     }
+         }
+}
+
+E2dt21<-E2dt2%>%filter(condition=="More Fake")
+for(i in 1:nrow(E2dt21)){
+   for(j in c(17:80)){
+     if(E2dt21[i,j]<50 )
+     {E2dt21[i,j]<-1}
+     else if (E2dt21[i,j]==50)
+     {E2dt21[i,j]<-0.5}
+     else{
+       E2dt21[i,j]<-0
+     }
+         }
+ }
+
+E2dt22<-E2dt2%>%filter(condition=="All True")
+for(i in 1:nrow(E2dt22)){
+   for(j in c(17:80)){
+     if(E2dt22[i,j]<50 )
+     {E2dt22[i,j]<-0}
+     else if (E2dt22[i,j]==50)
+     {E2dt22[i,j]<-0.5}
+     else{
+       E2dt22[i,j]<-1
+     }
+         }
+}
+
+E2dt2_bind<-rbind(E2dt21,E2dt22)
+E2dt2_bind_16<-E2dt2_bind[,-c(17:80)] #only remain first 8 and last 8 
+
+E2dt2_bind<-E2dt2_bind %>%
+  dplyr::group_by(Response.ID) %>%
+    summarize(percentage = sum(c(X,X.1,          X.2 ,         X.3,          X.4,         
+X.5 ,    X.6,     X.7 ,        X.8 ,         X.9 ,         X.10 ,    X.11,    
+X.12 ,        X.13,         X.14,         X.15 ,   X.16,        X.17  ,       X.18  ,      
+X.19  ,   X.20,   X.21 ,        X.22 ,        X.23 ,        X.24,X.25,X.26,X.27,X.28,X.29,X.30,X.31,X.32,X.33,X.34,X.35,X.36,X.37,X.38,X.39,X.40,X.41,X.42,X.43,X.44,X.45,X.46,X.47,X.48,X.49,X.50,X.51,X.52,X.53,X.54,X.55,X.56,X.57,X.58,X.59,X.60,X.61,X.62,X.63,X.64,X.65,X.66,X.67,X.68,X.69,X.70,X.71,X.72,X.73,X.74,X.75,X.76,X.77,X.78,X.79)/80*100))  %>%
+inner_join(E2dt2_bind, by = 'Response.ID')
+
+E2dt2_bind<-E2dt2_bind %>%
+  group_by(Response.ID) %>%
+    summarize(disMiddle = sum(c(X.8,X.9 ,         X.10 ,    X.11,    
+X.12 ,        X.13,         X.14,         X.15 ,   X.16,        X.17  ,       X.18  ,      
+X.19  ,   X.20,   X.21 ,        X.22 ,        X.23 ,        X.24,X.25,X.26,X.27,X.28,X.29,X.30,X.31,X.32,X.33,X.34,X.35,X.36,X.37,X.38,X.39,X.40,X.41,X.42,X.43,X.44,X.45,X.46,X.47,X.48,X.49,X.50,X.51,X.52,X.53,X.54,X.55,X.56,X.57,X.58,X.59,X.60,X.61,X.62,X.63,X.64,X.65,X.66,X.67,X.68,X.69,X.70,X.71)/64*100)) %>%
+inner_join(E2dt2_bind, by = 'Response.ID')
+
+E2dt2_bind_16<-E2dt2_bind_16 %>%
+  group_by(Response.ID) %>%
+    summarize(percentage_f8 = sum(c(X,X.1,X.2,X.3,X.4,X.5,X.6,X.7)/8*100)) %>%
+inner_join(E2dt2_bind_16, by = 'Response.ID')
+
+E2dt2_bind_16<-E2dt2_bind_16 %>%
+  group_by(Response.ID) %>%
+    summarize(percentage_l8 = sum(c(X.72,X.73,X.74,X.75,X.76,X.77,X.78,X.79)/8*100)) %>%
+inner_join(E2dt2_bind_16, by = 'Response.ID')
+
+E2dt2_bind_16<-E2dt2_bind_16%>%mutate(difference_accu=percentage_l8-percentage_f8)
+
+#Anovas of accuracy
+E2dur2 <- subset(E2dt2_bind, E2dt2_bind$Duration..in.seconds. < 10000)
+E2dur2_16 <- subset(E2dt2_bind_16, E2dt2_bind_16$Duration..in.seconds. < 10000)
+
+maccu<-aov_ez("Response.ID","percentage",E2dt2_bind,between = "condition")
+maccu
+
+maccu2<-aov_ez("Response.ID","percentage",E2dur2,between = "condition")
+maccu2
+
+afex_plot(maccu2,"condition",error = "between",mapping = "color")
+
+tr_s2_accu80<-emmeans(maccu2,"condition")
+tr_s2_accu80
+
+tr_s2_accu80%>%
+  pairs(adjust="holm")
+
+m3<-filter(E2dur2,condition=="More Fake")
+m4<-filter(E2dur2,condition=="All True")
+
+m9<-filter(E2dur2_16,condition=="More Fake")
+m10<-filter(E2dur2_16,condition=="All True")
+
+maccu_f8<-aov_ez("Response.ID","percentage_f8",E2dt2_bind_16,between = "condition")
+maccu_f8
+maccu_f82<-aov_ez("Response.ID","percentage_f8",E2dur2_16,between = "condition")
+maccu_f82
+
+afex_plot(maccu_f82,"condition",error = "between",mapping = "color")
+
+tr_s2_accu_f8<-emmeans(maccu_f82,"condition")
+tr_s2_accu_f8
+
+tr_s2_accu_f8%>%
+  pairs(adjust="holm")
+
+maccu_l8<-aov_ez("Response.ID","percentage_l8",E2dt2_bind_16,between = "condition")
+maccu_l8
+maccu_l82<-aov_ez("Response.ID","percentage_l8",E2dur2_16,between = "condition")
+maccu_l82 
+
+afex_plot(maccu_l82,"condition",error = "between",mapping = "color")
+
+tr_s2_accu_l8<-emmeans(maccu_l82,"condition")
+tr_s2_accu_l8
+
+tr_s2_accu_l8%>%
+  pairs(adjust="holm")
+
+maccu_m64<-aov_ez("Response.ID","disMiddle",E2dt2_bind,between = "condition")
+maccu_m64
+
+afex_plot(maccu_m64,"condition",error = "between",mapping = "color")
+
+tr_s2_accu_m64<-emmeans(maccu_m64,"condition")
+tr_s2_accu_m64
+
+tr_s2_accu_m64%>%
+  pairs(adjust="holm")
+
+eaccu<-emmeans(maccu,"condition")
+eaccu
+
+eaccu2<-emmeans(maccu2,"condition")
+eaccu2
+
+eaccu_l82<-emmeans(maccu_l82,"condition")
+eaccu_l82
+
+eaccu_l8<-emmeans(maccu_l8,"condition")
+eaccu_l8
+
+#Anova about difference in accuracy 
+mdiff_accu<-aov_ez("Response.ID","difference_accu",E2dt2_bind_16,between = "condition")
+mdiff_accu
+
+mdiff_accu2<-aov_ez("Response.ID","difference_accu",E2dur2_16,,between ="condition")
+mdiff_accu2
+
+emdiff_accu<-emmeans(mdiff_accu,"condition")
+emdiff_accu
+
+anova_model_accudiff = lm(formula = difference_accu ~ condition, data = E2dur2_16)
+summary.aov(anova_model_accudiff)
+
+eta.full.SS(dfm = 1, dfe = 77, ssm = 77,
+            sst = (77+41085), Fvalue = 0.145, a = .05)
+
+#only remain f8/l8/id/conditions
+E2dt2_bind_16_2<-E2dt2_bind_16[,c(1,2,3,5)]
+
+#change trf8/trl8 into one column 
+E2dt2_bind_16_2<-E2dt2_bind_16_2 %>%
+  pivot_longer(c(2,3), names_to = "sequence", values_to = "percentagetrue")
+
+#mixed anova \
+mp<-aov_ez("Response.ID","percentagetrue",E2dt2_bind_16_2,between = "condition",within="sequence")
+mp
+
+emmp<-emmeans(mp,"condition")
+emmp
+
+#t test of differences in accuracy 
+E2dt2_bind_16mf<-E2dt2_bind_16%>%filter(condition=="More Fake")
+E2dt2_bind_16$condition
+t.test(E2dt2_bind_16mf$percentage_l8,E2dt2_bind_16mf$percentage_f8,paired = TRUE)
+
+E2dt2_bind_16at<-E2dt2_bind_16%>%filter(condition=="All True")
+t.test(E2dt2_bind_16at$percentage_l8,E2dt2_bind_16at$percentage_f8,paired = TRUE)
+
+```
+
+##Other factors
+```{r}
+###other regressions 
+#first merge e2dt,e2dt2bind and e2dt3bind so a chart has every information that we have 
+E2<-cbind(E2dt1,E2dt2_bind)
+E2<-E2[,-7]
+E2<-E2[,-c(16:95)]
+E2$tr80<-E2dur$tr80
+
+#concern,frequency,sources
+a<-lm(tr80~concern+frequency+sources,E2)
+summary(a)
+
+#exhaustion
+ex<-aov_ez("Respond.ID","exhaustion",E2,between = "condition")
+ex
+
+afex_plot(ex,"condition",error = "between",mapping = "color")
+
+tr_s2_ex<-emmeans(ex,"condition")
+tr_s2_ex
+
+tr_s2_ex%>%
+  pairs(adjust="holm")
+
+#partisanship
+E2dt$partisanship.<-as.factor(E2dt$partisanship.)
+levels(E2dt$partisanship.)
+
+par<-aov_ez("Respond.ID","tr80",E2,between = "partisanship.")
+par
+
+group_by(E2, partisanship.) %>%
+  summarise(
+    count = n(),
+    mean = mean(tr80),
+    sd = sd(tr80)
+  )
+
+res.aov <- aov(tr80 ~ partisanship., data = E2)
+summary(res.aov)
+
+```
+
+
+## Research question 3: examine the correlation between truth relativism and individual’s self-reported relativism
+```{r}
+#self report relativism 
+E2<-E2 %>%
+  group_by(Respond.ID) %>%
+    summarize(sr = mean(c(s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11))) %>%
+inner_join(E2, by = 'Respond.ID')
+
+E2<-read.csv("E2.csv",header = TRUE)
+
+anova_model_e2sr = lm(formula = sr ~ tr80, data = E2)
+summary.aov(anova_model_e2sr)
+
+eta.full.SS(dfm = 1, dfe = 77, ssm = 1.595,
+            sst = (1.595+18.945), Fvalue = 6.482, a = .05)
+
+se<-aov_ez("Respond.ID","sr",E2,between = "condition")
+se
+
+enfse<-emmeans(se,"condition")
+enfse
+
+afex_plot(se,"condition",error = "between",mapping = "color")
+
+tr_s2_se<-emmeans(se,"condition")
+tr_s2_se
+
+tr_s2_se%>%
+  pairs(adjust="holm")
+
+#concern,frequency and sources with self-report relativism 
+asr<-lm(sr~concern+frequency+sources,E2)
+summary(asr)
+
+bsr<-lm(sr~concern+sources,E2)
+summary(bsr)
+
+csr<-lm(sr~sources,E2)
+summary(csr)
+
+dsr<-lm(sr~concern,E2)
+summary(dsr)
+
+esr<-lm(sr~concern+frequency,E2)
+summary(esr)
+
+fsr<-lm(sr~sources+frequency,E2)
+summary(fsr)
+
+gsr<-lm(sr~frequency,E2)
+summary(gsr)
+
+summary(lm(sources~frequency,E2))
+summary(lm(sources~concern,E2))
+
+#partisanship and self-report relativism 
+E2dt$partisanshi.<-as.factor(E2dt$partisanship.)
+
+par_sr<-aov_ez("Respond.ID","sr",E2,between = "partisanship.")
+par_sr
+
+res.aovsr <- aov(sr ~ partisanship., data = E2)
+summary(res.aovsr)
+```
+
+##Analysis of "encounter", "fake news experience" and the number of sliders participants put less than 50
+##“Among all the news you have just read in our experiment, what percentage of fake news do you think you have encountered?” - "encounter"
+##We asked the question: “In your opinion, what is the percentage of fake news among all the news that you encounter?” - "fake news experience"
+```{r}
+#manipulation check -encounter
+man<-aov_ez("Respond.ID","encounter",E2,between = "condition")
+man
+
+emencounter<-emmeans(man,"condition")
+emencounter
+con6<-list(true_vs_fake=c(1,-1))
+contrast(emencounter, con6, adjust = "holm")
+
+#subjective fake news experience 
+summary(lm(tr80~subjective,E2)) 
+
+summary(lm(tr80~encounter,E2)) 
+
+summary(lm(tr80~sr,E2)) 
+cor.test(E2$tr80,E2$sr)
+
+summary(lm(sr~subjective,E2))
+summary(lm(sr~encounter,E2))
+summary(lm(encounter~subjective,E2)) 
+
+summary(lm(percentage~subjective,E2))
+summary(lm(percentage~encounter,E2))
+
+#number of fake news judgements 
+E2dtjudgement<-E2dt2
+
+for(i in 1:nrow(E2dtjudgement)){
+   for(j in c(9:88)){
+     if(E2dtjudgement[i,j]<50 )
+     {E2dtjudgement[i,j]<-1}
+     else if (E2dtjudgement[i,j]==50 ){
+       E2dtjudgement[i,j]<-0.5
+     }
+     else{
+       E2dtjudgement[i,j]<-0
+     }
+         }
+}
+
+
+E2dtjudgement<-E2dtjudgement %>%
+  group_by(Response.ID) %>%
+    summarize(judgement =sum (c(X,X.1,          X.2 ,         X.3,          X.4,         
+X.5 ,    X.6,     X.7 ,        X.8 ,         X.9 ,         X.10 ,    X.11,    
+X.12 ,        X.13,         X.14,         X.15 ,   X.16,        X.17  ,       X.18  ,      
+X.19  ,   X.20,   X.21 ,        X.22 ,        X.23 ,        X.24,X.25,X.26,X.27,X.28,X.29,X.30,X.31,X.32,X.33,X.34,X.35,X.36,X.37,X.38,X.39,X.40,X.41,X.42,X.43,X.44,X.45,X.46,X.47,X.48,X.49,X.50,X.51,X.52,X.53,X.54,X.55,X.56,X.57,X.58,X.59,X.60,X.61,X.62,X.63,X.64,X.65,X.66,X.67,X.68,X.69,X.70,X.71,X.72,X.73,X.74,X.75,X.76,X.77,X.78,X.79))) %>%
+inner_join(E2dtjudgement, by = 'Response.ID')
+
+E2$judgement<-E2dtjudgement$judgement
+
+#regressions regarding fake news judgements 
+summary(lm(encounter~judgement,E2)) #effective question about encounter 
+summary(lm(sr~judgement,E2)) 
+summary(lm(tr80~judgement,E2)) 
+
+E2$difference
+summary(lm(tr80~judgement,E2)) 
+summary(lm(tr80~judgement,E2)) 
+
+```
+
+##Regressions
+```{r}
+#regressions regarding accuracy
+summary(lm(percentage~tr80,E2))  #negative relationship between accuracy and relativism
+
+summary(lm(percentage~sr,E2)) 
+
+summary(lm(tr80~sr,E2))
+
+summary(lm(percentage~concern+frequency+sources,E2))
+#negative relationship between detailed accuracy and relativism
+
+#regressions regarding exhaustion 
+summary(lm(tr80~exhaustion,E2))
+
+summary(lm(percentage~exhaustion,E2)) #the more exhausted, the less discerned 
+
+summary(lm(exhaustion~subjective,E2)) #the more exhausted, the 
+cor.test(E2$exhaustion,E2$subjective)
+
+summary(lm(encounter~exhaustion,E2))  #the more exhausted, the more encounter
+
+summary(lm(judgement~exhaustion,E2))
+
+summary(lm(judgement~exhaustion,E2))
+
+summary(lm(judgement~subjective,E2))
+
+cor.test(E2$judgement,E2$subjective)
+
+summary(lm(encounter~subjective,E2))
+
+summary(lm(subjective~encounter,E2))
+
+summary(lm(tr80~subjective,E2))
+
+summary(lm(trlast8~subjective,E2))
+
+summary(lm(trfirst8~subjective,E2))
+
+summary(lm(difference~subjective,E2))
+
+colnames(E2)
+
+#other regressions 
+summary(lm(tr80~sr,E2))
+summary(lm(tr80~age,E2))
+summary(lm(difference~age,E2)) 
+
+
+summary(lm(trlast8~age,E2))
+summary(lm(trfirst8~age,E2))
+
+summary(lm(sr~age,E2))
+
+summary(lm(tr80~sr+condition,E2))
+summary(lm(tr80~judgement+condition,E2))
+
+summary(lm(tr80~gender,E2))
+summary(lm(sr~gender,E2)) 
+
+aov_ez("Respond.ID","tr80",E2,between = "gender")
+aov_ez("Respond.ID","sr",E2,between = "gender")
+
+#gender and self-report relativism
+summary(lm(percentage~judgement ,E2)) 
+E2$percentage_f8<-E2dt2_bind_16$percentage_f8
+E2$percentage_l8<-E2dt2_bind_16$percentage_l8
+E2$percentage_disMiddle<-E2dt2_bind$disMiddle
+E2$difference_accu<-E2dt2_bind_16$difference_accu
+
+summary(lm(percentage~judgement ,E2)) 
+
+summary(lm(percentage_f8~judgement ,E2)) 
+summary(lm(percentage_l8~judgement ,E2)) 
+
+summary(lm(difference_accu~judgement ,E2)) 
+
+aov_ez("Respond.ID","tr80",E2,between = "age")
+
+median(E2$percentage)
+
+median(E2$percentage)
+median(E2$percentage_l8)
+median(E2$percentage_f8)
+```
+

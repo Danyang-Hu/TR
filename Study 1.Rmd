@@ -1,0 +1,698 @@
+---
+title: "Study 1"
+output: html_document
+---
+
+```{r}
+library("Rmisc")
+library("plyr")
+library("lattice")
+library("ggplot2")
+library("ggpubr")
+library("plotrix")
+library("rtdists")
+library("tidyverse")
+library("tidyr")
+library("afex")
+library("emmeans")
+library("viridis")
+library("cowplot")
+library("stringr")
+library("caret")
+library("cowplot")
+library("knitr")
+library("lattice")
+library("gsubfn") 
+library("stringi")    
+library("nlme")
+library("Matrix")
+library("writexl")
+library("xlsx")
+library("PairedData")
+library(yarrr)     
+library(plotrix)   
+library(kableExtra)
+library(jtools)
+library(here)   
+here::here()
+library(psycho)
+library("dplyr")
+library("data.table")
+library("lsr")
+library(MOTE)
+library(pwr)
+
+#theme_apa
+theme_apa <- function(base_size = 12, base_family = "", box = FALSE) {
+  adapted_theme <- ggplot2::theme_bw(base_size, base_family) +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = ggplot2::rel(1.1), margin = ggplot2::margin(0, 0, ggplot2::rel(14), 0), hjust = 0.5)
+      , plot.subtitle = ggplot2::element_text(size = ggplot2::rel(0.8), margin = ggplot2::margin(ggplot2::rel(-7), 0, ggplot2::rel(14), 0), hjust = 0.5)
+
+      # , axis.title = ggplot2::element_text(size = ggplot2::rel(1.1))
+      , axis.title.x = ggplot2::element_text(size = ggplot2::rel(1), lineheight = ggplot2::rel(1.1), margin = ggplot2::margin(ggplot2::rel(12), 0, 0, 0))
+      , axis.title.x.top = ggplot2::element_text(size = ggplot2::rel(1), lineheight = ggplot2::rel(1.1), margin = ggplot2::margin(0, 0, ggplot2::rel(12), 0))
+      , axis.title.y = ggplot2::element_text(size = ggplot2::rel(1), lineheight = ggplot2::rel(1.1), margin = ggplot2::margin(0, ggplot2::rel(12), 0, 0))
+      , axis.title.y.right = ggplot2::element_text(size = ggplot2::rel(1), lineheight = ggplot2::rel(1.1), margin = ggplot2::margin(0, 0, 0, ggplot2::rel(12)))
+      , axis.ticks.length = ggplot2::unit(ggplot2::rel(6), "points")
+      , axis.text = ggplot2::element_text(size = ggplot2::rel(0.9))
+      , axis.text.x = ggplot2::element_text(size = ggplot2::rel(1), margin = ggplot2::margin(ggplot2::rel(6), 0, 0, 0))
+      , axis.text.y = ggplot2::element_text(size = ggplot2::rel(1), margin = ggplot2::margin(0, ggplot2::rel(6), 0, 0))
+      , axis.text.y.right = ggplot2::element_text(size = ggplot2::rel(1), margin = ggplot2::margin(0, 0, 0, ggplot2::rel(6)))
+      , axis.line = ggplot2::element_line()
+      # , axis.line.x = ggplot2::element_line()
+      # , axis.line.y = ggplot2::element_line()
+
+      , legend.title = ggplot2::element_text()
+      , legend.key = ggplot2::element_rect(fill = NA, color = NA)
+      , legend.key.width = ggplot2::unit(ggplot2::rel(20), "points")
+      , legend.key.height = ggplot2::unit(ggplot2::rel(20), "points")
+      , legend.margin = ggplot2::margin(
+        t = ggplot2::rel(16)
+        , r = ggplot2::rel(16)
+        , b = ggplot2::rel(16)
+        , l = ggplot2::rel(16)
+        , unit = "points"
+      )
+
+      , panel.spacing = ggplot2::unit(ggplot2::rel(14), "points")
+      , panel.grid.major.x = ggplot2::element_blank()
+      , panel.grid.minor.x = ggplot2::element_blank()
+      , panel.grid.major.y = ggplot2::element_blank()
+      , panel.grid.minor.y = ggplot2::element_blank()
+
+      , strip.background = ggplot2::element_rect(fill = NA, color = NA)
+      , strip.text.x = ggplot2::element_text(size = ggplot2::rel(1.2), margin = ggplot2::margin(0, 0, ggplot2::rel(10), 0))
+      , strip.text.y = ggplot2::element_text(size = ggplot2::rel(1.2), margin = ggplot2::margin(0, 0, 0, ggplot2::rel(10)))
+    )
+
+  if(box) {
+    adapted_theme <- adapted_theme + ggplot2::theme(panel.border = ggplot2::element_rect(color = "black"))
+  } else {
+    adapted_theme <- adapted_theme + ggplot2::theme(panel.border = ggplot2::element_blank())
+  }
+
+  adapted_theme
+}
+```
+
+## Research question 1: investigate if and how differential exposure to misinformation affects individuals’ truth relativism towards true news
+```{r cars}
+#Reading data
+dt200<-read.csv("tn200.csv",header=TRUE)
+
+#Data transformation - from true level to truth relativism 
+for(i in 1:nrow(dt200)) {
+  for (j in 4:43){
+    dt200[i,j]<-(1-abs(dt200[i,j]-50)/50)
+  }
+}
+
+#Treatment groups
+dt1_headlinelessfake<-data.frame(colMeans(filter(dt200,condition=="Less Fake")[,4:43]))
+dt1_headlinemorefake<-data.frame(colMeans(filter(dt200,condition=="More Fake")[,4:43]))
+
+#Truth relativism of 20 common headlines
+dt200<-dt200 %>%
+  group_by(participant) %>%
+    summarize(tr20 = mean(c(X1,          X2 ,         X3,          X4,         
+X5 ,         X7 ,        X8 ,         X9 ,         X10 ,        
+X12 ,        X13,         X14,         X15 ,           X17  ,       X18  ,      
+X19  ,      X21 ,        X22 ,        X23 ,        X24 ))) %>%
+inner_join(dt200, by = 'participant')
+
+#Truth relativism of all the headlines 
+dt200<-dt200 %>%
+  group_by(participant) %>%
+    summarize(trall = mean(c(X1,          X2 ,         X3,          X4,         
+X5 ,  X6,    X7 ,        X8 ,         X9 ,         X10 ,      X11,  
+X12 ,        X13,         X14,         X15 ,    X16,       X17  ,       X18  ,      
+X19  ,   X20,   X21 ,        X22 ,        X23 ,        X24,X25,X26,X27,X28,X29,X30,X31,X32,X33,X34,X35,X36,X37,X38,X39,X40))) %>%
+inner_join(dt200, by = 'participant')
+
+#Anova of truth relativism of 20 common headlines 
+nf200<-aov_ez("participant","tr20",dt200,between = c("feedback","condition"))
+nf200
+
+anova_modele1tr = lm(formula = tr20 ~ condition, data = dt200)
+summary.aov(anova_modele1tr)
+
+eta.full.SS(dfm = 1, dfe = 180, ssm = 0.003,
+            sst = (0.003+5.878), Fvalue = 0.081, a = .05)
+
+#afex_plot
+afex_plot(nf200,"feedback","condition",error = "between",mapping = c("shape", "color"))
+
+#Follow-up
+enf200<-emmeans(nf200,"condition",by="feedback")
+
+enf2001<-emmeans(nf200,"feedback",by="condition")
+enf2001
+
+enf200%>%
+  pairs(adjust="holm")
+
+enf2001%>%
+  pairs(adjust="holm") 
+
+#Main graph for Study 1
+dt200 %>%
+  arrange("Truth Relativism") %>%
+  mutate(X = factor(X, levels=c("Less Fake & No Feedback", "More Fake & No Feedback","Less Fake & With Feedback", "More Fake & With Feedback"))) %>%
+ ggplot(aes(x=X, y=tr20)) + 
+  labs(y="Truth Relativism", x = "Treatment Group") +
+  geom_boxplot(alpha=0.3,width = .15,outlier.shape = NA,fill="dark grey")+
+  theme_classic()+
+  geom_point(position = position_jitter(width = .15), size = 0.5,colour="black")
+```
+
+## Analysis of the percentage of news that were rated less than 50
+```{r pressure, echo=FALSE}
+#Analysis of the percentage of news that were rated less than 50
+dt200dis<-read.csv("tn200.csv",head=TRUE)
+
+#Data transformation
+for(i in 1:nrow(dt200dis)){
+   for(j in 4:43){
+     if(dt200dis[i,j]<50)
+     {dt200dis[i,j]<-1}
+     else if (dt200dis[i,j]==50)
+     {dt200dis[i,j]<-0.5}
+     else{
+       dt200dis[i,j]<-0
+     }
+         }
+ }
+
+#the_percentage_of_news_that_were_rated_less_than50
+dt200dis<-dt200dis %>%
+  group_by(participant) %>%
+    summarize(the_percentage_of_news_that_were_rated_less_than50 = sum(c(X1,          X2 ,         X3,          X4,         
+X5 ,   X6,      X7 ,        X8 ,         X9 ,         X10 ,        X11,
+X12 ,        X13,         X14,         X15 ,    X16,       X17  ,       X18  ,      
+X19  ,  X20,    X21 ,        X22 ,        X23 ,        X24,X25,X26,X27,X28,X29,X30,X31,X32,X33,X34,X35,X36,X37,X38,X39,X40)/40*100)) %>%
+inner_join(dt200dis, by = 'participant')
+
+#Manipulation check 
+dt200dis%>%
+  group_by(feedback,condition)%>%
+  summarise(mean=mean(the_percentage_of_news_that_were_rated_less_than50),
+            sd=sd(the_percentage_of_news_that_were_rated_less_than50))
+
+#Anova of the percentage of news that were rated less than 50
+fakepercentage<-aov_ez("participant","the_percentage_of_news_that_were_rated_less_than50",dt200dis,between = c("feedback","condition"))
+summary(fakepercentage)
+
+#Afex_plot
+afex_plot(fakepercentage,"feedback","condition",error = "between",mapping = c("shape", "color"))
+
+#Follow-up for the percentage of news that were rated less than 50
+percentage1<-emmeans(fakepercentage,"condition","feedback")
+percentage1
+
+percentage2<-emmeans(fakepercentage,"feedback",by="condition")
+percentage2
+
+percentage3<-emmeans(fakepercentage,"condition")
+percentage3
+
+percentage4<-emmeans(fakepercentage,"feedback")
+percentage4
+
+con1<-list(mixed_vs_true=c(1,-1))
+contrast(percentage3, con1, adjust = "holm")
+
+con3<-list(yf_vs_nf=c(-1,1))
+contrast(percentage4, con3, adjust = "holm")
+
+percentage1%>%
+  pairs(adjust="holm")
+
+percentage2%>%
+  pairs(adjust="holm")
+
+```
+
+
+## Research question 2: examine whether differential exposure to misinformation affects individuals’ accuracy of judgements 
+```{r}
+#Analysis of accuracy
+dt200right<-read.csv("tn200.csv",head=TRUE)
+
+dt200true<-dt200right%>%
+  filter(condition=="Less Fake")
+
+for(i in 1:nrow(dt200true)) {
+  for (j in c(4,5,6,7,8,10,11,12,13,15,16,17,18,20,21,22,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,40,41,42,43)){
+    if (dt200true[i,j]<50)
+    {dt200true[i,j]<-0}
+     else if (dt200true[i,j]==50)
+     {dt200true[i,j]<-0.5}
+    else
+      {dt200true[i,j]<-1}
+  }
+}
+
+for(i in 1:nrow(dt200true)) {
+  for (j in c(9,14,19,23,39)){
+    if (dt200true[i,j]<50)
+    {dt200true[i,j]<-1}
+    else if (dt200true[i,j]==50)
+     {dt200true[i,j]<-0.5}
+    else
+      {dt200true[i,j]<-0}
+  }
+}
+
+dt200true<-dt200true %>%
+  group_by(participant) %>%
+    summarize(discernment40true = sum(c(X1,          X2 ,         X3,          X4,  
+X5 ,  X7 ,        X8 ,         X9 ,         X10 ,  
+X12 ,        X13,         X14,         X15 ,      X17  ,       X18  ,      
+X19  ,   X21 ,        X22 ,        X23 ,        X24,X25,X26,X27,X28,X29,X30,X31,X32,X33,X34,X35,X37,X38,X39,X40)/35*100)) %>%
+inner_join(dt200true, by = 'participant')
+
+dt200true<-dt200true %>%
+  group_by(participant) %>%
+    summarize(discernment40false= sum(c(X6,X11,X16,X20,X36)/5*100)) %>%
+inner_join(dt200true, by = 'participant')
+
+dt200true<-dt200true %>%
+  group_by(participant) %>%
+    summarize(discernment40falsecommon= sum(c(X6,X11,X16,X20,X36)/5*100)) %>%
+inner_join(dt200true, by = 'participant')
+
+dt200true<-dt200true %>%
+  group_by(participant) %>%
+    summarize(discernment40truecommon = sum(c(X1,          X2 ,         X3,          X4,  
+X5 ,  X7 ,        X8 ,         X9 ,         X10 ,  
+X12 ,        X13,         X14,         X15 ,      X17  ,       X18  ,      
+X19  ,   X21 ,        X22 ,        X23 ,        X24)/20*100)) %>%
+inner_join(dt200true, by = 'participant')
+
+dt200true<-dt200true %>%
+  group_by(participant) %>%
+    summarize(discernment40= sum(c(X1,          X2 ,         X3,          X4,  
+X5 ,  X6,       X7 ,        X8 ,         X9 ,         X10 ,     X11,   
+X12 ,        X13,         X14,         X15 ,   X16,        X17  ,       X18  ,      
+X19  ,   X20,   X21 ,        X22 ,        X23 ,        X24,X25,X26,X27,X28,X29,X30,X31,X32,X33,X34,X35,X36,X37,X38,X39,X40)/40*100)) %>%
+inner_join(dt200true, by = 'participant')
+
+dt200true<-dt200true %>%
+  group_by(participant) %>%
+    summarize(discernment_other15 = sum(c(X25,X26,X27,X28,X29,X30,X31,X32,X33,X34,X35,X37,X38,X39,X40)/15*100)) %>%
+inner_join(dt200true, by = 'participant')
+
+dt200mixed<-dt200right%>%
+  filter(condition=="More Fake")
+
+for(i in 1:nrow(dt200mixed)) {
+  for (j in c(4,5,6,7,8,10,11,12,13,15,16,17,18,20,21,22,24,25,26,27)){
+    if (dt200mixed[i,j]<50)
+    {dt200mixed[i,j]<-0}
+  else if (dt200mixed[i,j]==50)
+     {dt200mixed[i,j]<-0.5}
+    else
+      {dt200mixed[i,j]<-1}
+  }
+}
+
+for(i in 1:nrow(dt200mixed)) {
+  for (j in c(9,14,19,23,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43)){
+    if (dt200mixed[i,j]<50)
+    {dt200mixed[i,j]<-1}
+    else if (dt200mixed[i,j]==50)
+     {dt200mixed[i,j]<-0.5}
+    else
+      {dt200mixed[i,j]<-0}
+  }
+}
+
+dt200mixed<-dt200mixed %>%
+  group_by(participant) %>%
+    summarize(discernment40true = sum(c(X1,          X2 ,         X3,          X4,  
+X5 ,  X7 ,        X8 ,         X9 ,         X10 ,  
+X12 ,        X13,         X14,         X15 ,      X17  ,       X18  ,      
+X19  ,   X21 ,        X22 ,        X23 ,        X24)/20*100)) %>%
+inner_join(dt200mixed, by = 'participant')
+
+dt200mixed<-dt200mixed %>%
+  group_by(participant) %>%
+    summarize(discernment40truecommon = sum(c(X1,          X2 ,         X3,          X4,  
+X5 ,  X7 ,        X8 ,         X9 ,         X10 ,  
+X12 ,        X13,         X14,         X15 ,      X17  ,       X18  ,      
+X19  ,   X21 ,        X22 ,        X23 ,        X24)/20*100)) %>%
+inner_join(dt200mixed, by = 'participant')
+
+dt200mixed<-dt200mixed %>%
+  group_by(participant) %>%
+    summarize(discernment40false = sum(c(X6,X11,X16,X20,X36,X25,X26,X27,X28,X29,X30,X31,X32,X33,X34,X35,X37,X38,X39,X40)/20*100)) %>%
+inner_join(dt200mixed, by = 'participant')
+
+dt200mixed<-dt200mixed%>%
+  group_by(participant) %>%
+    summarize(discernment40falsecommon= sum(c(X6,X11,X16,X20,X36)/5*100)) %>%
+inner_join(dt200mixed, by = 'participant')
+
+dt200mixed<-dt200mixed %>%
+  group_by(participant) %>%
+    summarize(discernment40 = sum(c(X1,          X2 ,         X3,          X4,         
+X5 ,  X6,       X7 ,        X8 ,         X9 ,         X10 ,     X11,   
+X12 ,        X13,         X14,         X15 ,   X16,        X17  ,       X18  ,      
+X19  ,   X20,   X21 ,        X22 ,        X23 ,        X24,X25,X26,X27,X28,X29,X30,X31,X32,X33,X34,X35,X36,X37,X38,X39,X40)/40*100)) %>%
+inner_join(dt200mixed, by = 'participant')
+
+dt200mixed<-dt200mixed %>%
+  group_by(participant) %>%
+    summarize(discernment_other15 = sum(c(X25,X26,X27,X28,X29,X30,X31,X32,X33,X34,X35,X37,X38,X39,X40)/15*100)) %>%
+inner_join(dt200mixed, by = 'participant')
+
+#Comparisons of accuracy between treatment groups 
+dt200ability<-rbind(dt200true,dt200mixed)
+
+dt200$discernment40truecommon<-dt200ability$discernment40truecommon
+
+dt200ability%>%
+  group_by(feedback,condition)%>%
+  summarise(mean=mean(discernment40),
+            sd=sd(discernment40)) 
+
+dt200ability%>%
+  group_by(feedback,condition)%>%
+  summarise(mean=mean(discernment40truecommon),
+            sd=sd(discernment40truecommon)) 
+
+dt200ability%>%
+  group_by(feedback,condition)%>%
+  summarise(mean=mean(discernment40falsecommon),
+            sd=sd(discernment40falsecommon)) 
+
+dt200ability%>%
+  group_by(feedback,condition)%>%
+  summarise(mean=mean(discernment_other15),
+            sd=sd(discernment_other15)) 
+
+#Anovas of accuracy between treatment groups 
+discernment40<-aov_ez("participant","discernment40",dt200ability,between = c("feedback","condition"))
+summary(discernment40)
+
+discernment40truecommon<-aov_ez("participant","discernment40truecommon",dt200ability,between = c("feedback","condition"))
+summary(discernment40truecommon)
+
+discernment40falsecommon<-aov_ez("participant","discernment40falsecommon",dt200ability,between = c("feedback","condition"))
+summary(discernment40falsecommon)
+
+afex_plot(discernment40,"feedback","condition",error = "between",mapping = c("shape", "color"))
+
+discernment1<-emmeans(discernment40,"condition","feedback")
+discernment1
+
+discernment2<-emmeans(discernment40,"feedback",by="condition")
+discernment2
+
+discernment3<-emmeans(discernment40,"condition")
+discernment3
+
+discernment4<-emmeans(discernment40,"feedback")
+discernment4
+
+con4<-list(mixed_vs_true=c(1,-1))
+contrast(discernment3, con4, adjust = "holm")
+
+con5<-list(yf_vs_nf=c(-1,1))
+contrast(discernment4, con5, adjust = "holm")
+
+con6<-list(yf_vs_nf=c(-0.5,-0.5,0.5,0.5),
+           mixed_vs_true=c(0.5,-0.5,0.5,-0.5))
+
+discernment1%>%
+  pairs(adjust="holm")
+
+discernment2%>%
+  pairs(adjust="holm")
+
+discernment_other<-aov_ez("participant","discernment_other15",dt200ability,between = c("feedback","condition"))
+summary(discernment_other)
+
+afex_plot(discernment_other,"feedback","condition",error = "between",mapping = c("shape", "color"))
+
+discernment1_other<-emmeans(discernment_other,"condition","feedback")
+discernment1_other
+
+discernment2_other<-emmeans(discernment_other,"feedback",by="condition")
+discernment2_other
+
+discernment1_other%>%
+  pairs(adjust="holm")
+
+discernment2_other%>%
+  pairs(adjust="holm")
+```
+
+
+#Analysis of other factors
+```{r}
+#concern,frequency,sources
+a<-lm(trall~concern+frequency+sources,dt200)
+summary(a)
+a20<-lm(tr20~concern+frequency+sources,dt200)
+summary(a20)
+
+#Analysis of exhaustion
+ex<-aov_ez("participant","exhaustion",dt200,between = c("feedback","condition"))
+ex
+
+exfo<-emmeans(ex,"condition",by="feedback")
+exfo
+
+exfo1<-emmeans(ex,"feedback",by="condition")
+exfo1
+
+exfo%>%
+  pairs(adjust="holm")
+
+exfo1%>%
+  pairs(adjust="holm")
+
+#Analysis of partisanship
+dt200$partisanship<-as.factor(dt200$partisanship)
+levels(dt200$partisanship)
+
+par<-aov_ez("participant","tr20",dt200,between = "partisanship")
+par
+
+group_by(dt200, partisanship) %>%
+  summarise(
+    count = n(),
+    mean = mean(trall),
+    sd = sd(trall)
+  )
+
+
+group_by(dt200, partisanship) %>%
+  summarise(
+    count = n(),
+    mean = mean(tr20),
+    sd = sd(tr20)
+  )
+
+#Analysis of Cognitive Reflection Test score
+for(i in 1:nrow(dt200)){
+    if(dt200$crt1[i]==2) {
+      dt200$crt1[i]<-1
+      }
+    else {
+      dt200$crt1[i]<-0
+    }
+        }
+
+for(i in 1:nrow(dt200)){
+    if(dt200$crt2[i] %in% c("Emily","emily")) {
+      dt200$crt2[i]<-1
+      }
+    else {
+      dt200$crt2[i]<-0
+    }
+        }
+
+for(i in 1:nrow(dt200)){
+    if(dt200$crt3[i]==4) {
+      dt200$crt3[i]<-1
+      }
+    else {
+      dt200$crt3[i]<-0
+    }
+        }
+
+for(i in 1:nrow(dt200)){
+    if(dt200$crt4[i]==10) {
+      dt200$crt4[i]<-1
+      }
+    else {
+      dt200$crt4[i]<-0
+    }
+        }
+
+for(i in 1:nrow(dt200)){
+    if(dt200$crt4[i]==10) {
+      dt200$crt4[i]<-1
+      }
+    else {
+      dt200$crt4[i]<-0
+    }
+        }
+
+for(i in 1:nrow(dt200)){
+    if(dt200$crt5[i]==39) {
+      dt200$crt5[i]<-1
+      }
+    else {
+      dt200$crt5[i]<-0
+    }
+        }
+
+for(i in 1:nrow(dt200)){
+    if(dt200$crt6[i]==8) {
+      dt200$crt6[i]<-1
+      }
+    else {
+      dt200$crt6[i]<-0
+    }
+}
+
+dt200$crt1<-as.numeric(dt200$crt1)
+dt200$crt2<-as.numeric(dt200$crt2)
+dt200$crt3<-as.numeric(dt200$crt3)
+dt200$crt4<-as.numeric(dt200$crt4)
+dt200$crt5<-as.numeric(dt200$crt5)
+dt200$crt6<-as.numeric(dt200$crt6)
+
+dt200<-dt200 %>%
+  group_by(participant) %>%
+    summarize(crt = sum(crt1,crt2,crt3,crt4,crt5,crt6))%>%
+inner_join(dt200, by = 'participant')
+
+res_crt<-lm(trall~crt,dt200)
+summary(res_crt)
+
+res_crt<-lm(tr20~crt,dt200)
+summary(res_crt)
+```
+
+#Analysis of self-reported relativism
+```{r}
+se<-aov_ez("participant","sr",dt200,between = c("feedback","condition"))
+se
+
+anova_modele1sr = lm(formula = sr ~ tr20, data = dt200)
+summary.aov(anova_modele1sr)
+
+eta.full.SS(dfm = 1, dfe = 180, ssm = 634,
+            sst = (634+10154), Fvalue = 11.25, a = .05)
+
+enfse<-emmeans(se,"condition",by="feedback")
+enfse
+
+enfse%>%
+  pairs(adjust="holm")
+
+enfse1<-emmeans(se,"feedback",by="condition")
+enfse1
+
+enfse1%>%
+  pairs(adjust="holm")
+
+enfse2<-emmeans(se,"feedback")
+enfse2
+
+enfse2%>%
+  pairs(adjust="holm")
+
+cor.test(dt200$sr,dt200$tr20,method= "pearson")
+
+cor.test(dt200$sr,dt200$trall)
+
+asr<-lm(sr~concern+frequency+sources,dt200)
+summary(asr)
+#the more sources people check, the lower their self-report truth-relativism would be 
+
+a<-lm(dt200ability$discernment40~concern+frequency+sources,dt200)
+summary(a)
+
+#partisanship and self-reported relativism 
+dt200$partisanship<-as.factor(dt200$partisanship)
+
+group_by(dt200, partisanship) %>%
+  summarise(
+    count = n(),
+    mean = mean(sr),
+    sd = sd(sr)
+  )
+
+res.aovsr <- aov(sr ~ partisanship, data = dt200)
+summary(res.aovsr)
+
+#crt and self-report relativism
+res_crtsr<-lm(sr~crt,dt200)
+summary(res_crtsr)
+
+```
+
+
+#Regressions of the percentage of news that were rated less than 50
+```{r}
+dt200$fp<-dt200dis$the_percentage_of_news_that_were_rated_less_than50
+
+f3<-lm(exhaustion~fp,dt200)
+summary(f3)
+
+f4<-lm(sr~fp,dt200)
+summary(f4)
+
+summary(lm(fp~concern + frequency + sources,dt200))
+
+summary(lm(fp~age,dt200))
+
+summary(lm(tr20~age,dt200))
+
+summary(lm(tr20~fp,dt200))
+
+summary(aov_ez("participant","tr20",dt200,between = "condition"))
+
+t.test(subset(dt200, condition=="Less Fake")$"tr20", 
+       subset(dt200, condition=="More Fake")$"tr20")
+
+summary(fakepercentage)
+
+summary(lm(trall~age,dt200))
+cor.test(dt200$sr,dt200$tr20)
+
+dt200$discernment<-dt200ability$discernment40
+dt200$discernment40truecommon<-dt200ability$discernment40truecommon
+dt200$discernment40falsecommon<-dt200ability$discernment40falsecommon
+dt200$discernment40false<-dt200ability$discernment40false
+dt200$discernment40true<-dt200ability$discernment40true
+dt200$discernment_other15<-dt200ability$discernment_other15
+colnames(dt200ability)
+
+d3<-lm(exhaustion~discernment,dt200)
+summary(d3)
+
+d4<-lm(sr~discernment,dt200)
+summary(d4)
+
+d5<-lm(discernment~crt,dt200)
+summary(d5)
+
+d6<-lm(crt~discernment,dt200)
+summary(d6)
+
+d7<-lm(discernment~concern + frequency + sources,dt200)
+summary(d7)
+
+d8<-lm(discernment~age,dt200)
+summary(d8)
+
+summary(lm(sr~age,dt200))
+```
+
